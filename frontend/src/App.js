@@ -1,53 +1,102 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
+
+// Pages
+import Dashboard from "./pages/Dashboard";
+import LeadInbox from "./pages/LeadInbox";
+import ContentStudio from "./pages/ContentStudio";
+import Pipeline from "./pages/Pipeline";
+import LeadDetail from "./pages/LeadDetail";
+
+// Components
+import Sidebar from "./components/Sidebar";
+import MobileNav from "./components/MobileNav";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+export const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+// API Service
+export const api = {
+  // Dashboard
+  getDashboardStats: () => axios.get(`${API}/dashboard/stats`),
+  
+  // Leads
+  getLeads: (params) => axios.get(`${API}/leads`, { params }),
+  getLead: (id) => axios.get(`${API}/leads/${id}`),
+  createLead: (data) => axios.post(`${API}/leads`, data),
+  updateLead: (id, data) => axios.put(`${API}/leads/${id}`, data),
+  deleteLead: (id) => axios.delete(`${API}/leads/${id}`),
+  rescoreLead: (id) => axios.post(`${API}/leads/${id}/rescore`),
+  
+  // Properties
+  getProperties: () => axios.get(`${API}/properties`),
+  getProperty: (id) => axios.get(`${API}/properties/${id}`),
+  createProperty: (data) => axios.post(`${API}/properties`, data),
+  deleteProperty: (id) => axios.delete(`${API}/properties/${id}`),
+  
+  // Content
+  generateContent: (data) => axios.post(`${API}/content/generate`, data),
+  getPropertyContent: (propertyId, params) => axios.get(`${API}/content/${propertyId}`, { params }),
+  approveContent: (contentId, approved) => axios.put(`${API}/content/${contentId}/approve`, { content_id: contentId, approved }),
+  
+  // WhatsApp
+  generateWhatsApp: (leadId, messageType, language) => 
+    axios.post(`${API}/whatsapp/generate?lead_id=${leadId}&message_type=${messageType}&language=${language}`),
+  approveWhatsApp: (messageId) => axios.put(`${API}/whatsapp/${messageId}/approve`),
+  sendWhatsApp: (messageId) => axios.put(`${API}/whatsapp/${messageId}/send`),
+  getLeadMessages: (leadId) => axios.get(`${API}/whatsapp/${leadId}`),
+  
+  // Pipeline
+  updatePipelineStage: (leadId, stage, probability) => 
+    axios.put(`${API}/pipeline/${leadId}/stage?stage=${stage}${probability !== undefined ? `&probability=${probability}` : ''}`),
+  getPipelineStats: () => axios.get(`${API}/pipeline/stats`),
+  
+  // Activity Logs
+  getActivityLogs: (limit) => axios.get(`${API}/activity-logs?limit=${limit || 50}`),
+};
+
+function AppContent() {
+  const location = useLocation();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
-    helloWorldApi();
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Desktop Sidebar */}
+      {!isMobile && <Sidebar currentPath={location.pathname} />}
+      
+      {/* Main Content */}
+      <main className={`${!isMobile ? 'md:ml-64' : ''} min-h-screen pb-24 md:pb-8`}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/leads" element={<LeadInbox />} />
+          <Route path="/leads/:id" element={<LeadDetail />} />
+          <Route path="/content" element={<ContentStudio />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+        </Routes>
+      </main>
+      
+      {/* Mobile Bottom Navigation */}
+      {isMobile && <MobileNav currentPath={location.pathname} />}
+      
+      <Toaster position="top-right" richColors />
     </div>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
