@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { 
   Plus, 
   Sparkles, 
-  Home,
   MapPin,
   Copy,
   CheckCircle,
@@ -180,8 +179,175 @@ export default function ContentStudio() {
     });
   };
 
+  const togglePlatform = (platformId) => {
+    if (selectedPlatforms.includes(platformId)) {
+      setSelectedPlatforms(selectedPlatforms.filter(p => p !== platformId));
+    } else {
+      setSelectedPlatforms([...selectedPlatforms, platformId]);
+    }
+  };
+
+  const toggleLanguage = (lang) => {
+    if (selectedLanguages.includes(lang)) {
+      setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
+    } else {
+      setSelectedLanguages([...selectedLanguages, lang]);
+    }
+  };
+
   const filteredContent = generatedContent.filter(
     c => c.platform === activePlatform && c.language === activeLanguage
+  );
+
+  const renderPropertyForm = () => (
+    <div className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label>Property Title *</Label>
+        <Input
+          data-testid="property-title-input"
+          placeholder="e.g., Stunning Sea View Apartment"
+          value={newProperty.title}
+          onChange={(e) => setNewProperty({...newProperty, title: e.target.value})}
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Location *</Label>
+          <Input
+            data-testid="property-location-input"
+            placeholder="e.g., Palm Jumeirah"
+            value={newProperty.location}
+            onChange={(e) => setNewProperty({...newProperty, location: e.target.value})}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Property Type</Label>
+          <Select 
+            value={newProperty.property_type}
+            onValueChange={(val) => setNewProperty({...newProperty, property_type: val})}
+          >
+            <SelectTrigger data-testid="property-type-select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Apartment">Apartment</SelectItem>
+              <SelectItem value="Villa">Villa</SelectItem>
+              <SelectItem value="Townhouse">Townhouse</SelectItem>
+              <SelectItem value="Penthouse">Penthouse</SelectItem>
+              <SelectItem value="Studio">Studio</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label>Bedrooms</Label>
+          <Input
+            data-testid="property-bedrooms-input"
+            type="number"
+            min="0"
+            value={newProperty.bedrooms}
+            onChange={(e) => setNewProperty({...newProperty, bedrooms: parseInt(e.target.value) || 0})}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Bathrooms</Label>
+          <Input
+            data-testid="property-bathrooms-input"
+            type="number"
+            min="0"
+            value={newProperty.bathrooms}
+            onChange={(e) => setNewProperty({...newProperty, bathrooms: parseInt(e.target.value) || 0})}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Area (sqft)</Label>
+          <Input
+            data-testid="property-area-input"
+            type="number"
+            placeholder="1500"
+            value={newProperty.area_sqft}
+            onChange={(e) => setNewProperty({...newProperty, area_sqft: e.target.value})}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Price *</Label>
+          <Input
+            data-testid="property-price-input"
+            type="number"
+            placeholder="2500000"
+            value={newProperty.price}
+            onChange={(e) => setNewProperty({...newProperty, price: e.target.value})}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Currency</Label>
+          <Select 
+            value={newProperty.currency}
+            onValueChange={(val) => setNewProperty({...newProperty, currency: val})}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="AED">AED</SelectItem>
+              <SelectItem value="USD">USD</SelectItem>
+              <SelectItem value="EUR">EUR</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Amenities</Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="e.g., Pool, Gym"
+            value={amenityInput}
+            onChange={(e) => setAmenityInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
+          />
+          <Button type="button" variant="outline" onClick={addAmenity}>Add</Button>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {newProperty.amenities.map((amenity, idx) => (
+            <Badge key={idx} variant="secondary" className="flex items-center gap-1">
+              {amenity}
+              <X className="w-3 h-3 cursor-pointer" onClick={() => removeAmenity(amenity)} />
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          data-testid="property-description-input"
+          placeholder="Describe the property..."
+          value={newProperty.description}
+          onChange={(e) => setNewProperty({...newProperty, description: e.target.value})}
+          rows={3}
+        />
+      </div>
+
+      <Button 
+        data-testid="submit-property-btn"
+        onClick={handleCreateProperty} 
+        disabled={creating}
+        className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-white rounded-full"
+      >
+        {creating ? (
+          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adding Property...</>
+        ) : (
+          <><Building2 className="w-4 h-4 mr-2" />Add Property</>
+        )}
+      </Button>
+    </div>
   );
 
   return (
@@ -211,160 +377,7 @@ export default function ContentStudio() {
                 Add New Property
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Property Title *</Label>
-                <Input
-                  data-testid="property-title-input"
-                  placeholder="e.g., Stunning Sea View Apartment"
-                  value={newProperty.title}
-                  onChange={(e) => setNewProperty({...newProperty, title: e.target.value})}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Location *</Label>
-                  <Input
-                    data-testid="property-location-input"
-                    placeholder="e.g., Palm Jumeirah"
-                    value={newProperty.location}
-                    onChange={(e) => setNewProperty({...newProperty, location: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Property Type</Label>
-                  <Select 
-                    value={newProperty.property_type}
-                    onValueChange={(val) => setNewProperty({...newProperty, property_type: val})}
-                  >
-                    <SelectTrigger data-testid="property-type-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Apartment">Apartment</SelectItem>
-                      <SelectItem value="Villa">Villa</SelectItem>
-                      <SelectItem value="Townhouse">Townhouse</SelectItem>
-                      <SelectItem value="Penthouse">Penthouse</SelectItem>
-                      <SelectItem value="Studio">Studio</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Bedrooms</Label>
-                  <Input
-                    data-testid="property-bedrooms-input"
-                    type="number"
-                    min="0"
-                    value={newProperty.bedrooms}
-                    onChange={(e) => setNewProperty({...newProperty, bedrooms: parseInt(e.target.value) || 0})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Bathrooms</Label>
-                  <Input
-                    data-testid="property-bathrooms-input"
-                    type="number"
-                    min="0"
-                    value={newProperty.bathrooms}
-                    onChange={(e) => setNewProperty({...newProperty, bathrooms: parseInt(e.target.value) || 0})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Area (sqft)</Label>
-                  <Input
-                    data-testid="property-area-input"
-                    type="number"
-                    placeholder="1500"
-                    value={newProperty.area_sqft}
-                    onChange={(e) => setNewProperty({...newProperty, area_sqft: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Price *</Label>
-                  <Input
-                    data-testid="property-price-input"
-                    type="number"
-                    placeholder="2500000"
-                    value={newProperty.price}
-                    onChange={(e) => setNewProperty({...newProperty, price: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Currency</Label>
-                  <Select 
-                    value={newProperty.currency}
-                    onValueChange={(val) => setNewProperty({...newProperty, currency: val})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AED">AED</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Amenities</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="e.g., Pool, Gym"
-                    value={amenityInput}
-                    onChange={(e) => setAmenityInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
-                  />
-                  <Button type="button" variant="outline" onClick={addAmenity}>Add</Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {newProperty.amenities.map((amenity) => (
-                    <Badge key={amenity} variant="secondary" className="flex items-center gap-1">
-                      {amenity}
-                      <X className="w-3 h-3 cursor-pointer" onClick={() => removeAmenity(amenity)} />
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  data-testid="property-description-input"
-                  placeholder="Describe the property..."
-                  value={newProperty.description}
-                  onChange={(e) => setNewProperty({...newProperty, description: e.target.value})}
-                  rows={3}
-                />
-              </div>
-
-              <Button 
-                data-testid="submit-property-btn"
-                onClick={handleCreateProperty} 
-                disabled={creating}
-                className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-white rounded-full"
-              >
-                {creating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Adding Property...
-                  </>
-                ) : (
-                  <>
-                    <Building2 className="w-4 h-4 mr-2" />
-                    Add Property
-                  </>
-                )}
-              </Button>
-            </div>
+            {renderPropertyForm()}
           </DialogContent>
         </Dialog>
       </div>
@@ -412,7 +425,7 @@ export default function ContentStudio() {
                         <div className="flex items-center gap-2 mt-1 text-xs">
                           <span>{property.bedrooms} BR</span>
                           <span>•</span>
-                          <span className={selectedProperty?.id === property.id ? 'text-[#D4AF37]' : 'text-[#D4AF37]'}>
+                          <span className="text-[#D4AF37]">
                             {property.price.toLocaleString()} {property.currency}
                           </span>
                         </div>
@@ -435,26 +448,23 @@ export default function ContentStudio() {
               <div>
                 <Label className="text-sm mb-2 block">Platforms</Label>
                 <div className="flex flex-wrap gap-2">
-                  {PLATFORMS.map((platform) => (
-                    <Badge
-                      key={platform.id}
-                      data-testid={`platform-${platform.id}`}
-                      variant={selectedPlatforms.includes(platform.id) ? "default" : "outline"}
-                      className={`cursor-pointer ${
-                        selectedPlatforms.includes(platform.id) ? platform.color : ''
-                      }`}
-                      onClick={() => {
-                        if (selectedPlatforms.includes(platform.id)) {
-                          setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform.id));
-                        } else {
-                          setSelectedPlatforms([...selectedPlatforms, platform.id]);
-                        }
-                      }}
-                    >
-                      <platform.icon className="w-3 h-3 mr-1" />
-                      {platform.label}
-                    </Badge>
-                  ))}
+                  {PLATFORMS.map((platform) => {
+                    const Icon = platform.icon;
+                    return (
+                      <Badge
+                        key={platform.id}
+                        data-testid={`platform-${platform.id}`}
+                        variant={selectedPlatforms.includes(platform.id) ? "default" : "outline"}
+                        className={`cursor-pointer ${
+                          selectedPlatforms.includes(platform.id) ? platform.color : ''
+                        }`}
+                        onClick={() => togglePlatform(platform.id)}
+                      >
+                        <Icon className="w-3 h-3 mr-1" />
+                        {platform.label}
+                      </Badge>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -469,13 +479,7 @@ export default function ContentStudio() {
                       className={`cursor-pointer ${
                         selectedLanguages.includes(lang) ? 'bg-[#001F3F]' : ''
                       }`}
-                      onClick={() => {
-                        if (selectedLanguages.includes(lang)) {
-                          setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
-                        } else {
-                          setSelectedLanguages([...selectedLanguages, lang]);
-                        }
-                      }}
+                      onClick={() => toggleLanguage(lang)}
                     >
                       {lang}
                     </Badge>
@@ -490,15 +494,9 @@ export default function ContentStudio() {
                 className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-white rounded-full"
               >
                 {generating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Content...
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating Content...</>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Content
-                  </>
+                  <><Sparkles className="w-4 h-4 mr-2" />Generate Content</>
                 )}
               </Button>
             </CardContent>
@@ -519,7 +517,7 @@ export default function ContentStudio() {
                   <Sparkles className="w-16 h-16 text-gray-200 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-500">No content generated yet</h3>
                   <p className="text-sm text-gray-400 mt-1">
-                    Select a property and click "Generate Content"
+                    Select a property and click Generate Content
                   </p>
                 </div>
               ) : (
@@ -527,17 +525,20 @@ export default function ContentStudio() {
                   {/* Platform Tabs */}
                   <Tabs value={activePlatform} onValueChange={setActivePlatform}>
                     <TabsList className="bg-gray-100 p-1 rounded-full w-full flex overflow-x-auto">
-                      {PLATFORMS.filter(p => selectedPlatforms.includes(p.id)).map((platform) => (
-                        <TabsTrigger
-                          key={platform.id}
-                          value={platform.id}
-                          data-testid={`content-tab-${platform.id}`}
-                          className="flex-1 rounded-full data-[state=active]:bg-white"
-                        >
-                          <platform.icon className="w-4 h-4 mr-1" />
-                          <span className="hidden sm:inline">{platform.label}</span>
-                        </TabsTrigger>
-                      ))}
+                      {PLATFORMS.filter(p => selectedPlatforms.includes(p.id)).map((platform) => {
+                        const Icon = platform.icon;
+                        return (
+                          <TabsTrigger
+                            key={platform.id}
+                            value={platform.id}
+                            data-testid={`content-tab-${platform.id}`}
+                            className="flex-1 rounded-full data-[state=active]:bg-white"
+                          >
+                            <Icon className="w-4 h-4 mr-1" />
+                            <span className="hidden sm:inline">{platform.label}</span>
+                          </TabsTrigger>
+                        );
+                      })}
                     </TabsList>
                   </Tabs>
 
