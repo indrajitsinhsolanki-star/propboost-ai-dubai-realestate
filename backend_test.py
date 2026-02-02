@@ -205,12 +205,9 @@ class PropBoostAPITester:
             print("❌ Skipped - No lead ID available")
             return False, {}
         
-        params = {
-            "stage": "qualified",
-            "probability": 70
-        }
+        endpoint = f"pipeline/{self.test_data['lead_id']}/stage?stage=qualified&probability=70"
         
-        return self.run_test("Update Pipeline Stage", "PUT", f"pipeline/{self.test_data['lead_id']}/stage", 200, params=params)
+        return self.run_test("Update Pipeline Stage", "PUT", endpoint, 200)
 
     def test_pipeline_stats(self):
         """Test pipeline statistics"""
