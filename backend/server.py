@@ -180,6 +180,10 @@ Return valid JSON only."""
                 response_text = response_text[4:]
         
         result = json.loads(response_text)
+        
+        # Ensure ai_briefing is a string, not a list
+        if isinstance(result.get('ai_briefing'), list):
+            result['ai_briefing'] = '\n• '.join(result['ai_briefing'])
         return result
     except Exception as e:
         logging.error(f"Lead scoring error: {e}")
