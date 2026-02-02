@@ -1,0 +1,137 @@
+{
+  "identity": {
+    "name": "PropBoost AI",
+    "mission": "Empower Dubai real estate agents with a luxurious, mobile-first productivity suite that blends AI efficiency with high-end aesthetics.",
+    "tone": "Professional, Luxurious, Efficient, 'Gold & Navy'",
+    "target_audience": "Mid-tier Dubai real estate agents (mobile-first hustlers)"
+  },
+  "design_system": {
+    "colors": {
+      "palette": {
+        "primary": {
+          "name": "Dubai Navy",
+          "hex": "#001F3F",
+          "tailwind": "bg-[#001F3F] text-white"
+        },
+        "secondary": {
+          "name": "Emirates Gold",
+          "hex": "#D4AF37",
+          "tailwind": "text-[#D4AF37] border-[#D4AF37]"
+        },
+        "background": {
+          "light": "#F8FAFC",
+          "dark": "#020617",
+          "card": "#FFFFFF"
+        },
+        "text": {
+          "primary": "#0F172A",
+          "secondary": "#64748B",
+          "accent": "#D4AF37"
+        },
+        "status": {
+          "hot": "#EF4444",
+          "warm": "#F59E0B",
+          "cold": "#3B82F6"
+        }
+      },
+      "usage_rules": [
+        "Use Navy (#001F3F) for sidebars, headers, and primary buttons to establish trust.",
+        "Use Gold (#D4AF37) sparingly for KPIs, active states, borders of premium items, and icons.",
+        "Backgrounds should be clean white or very light gray (#F8FAFC) to maintain readability in bright sunlight.",
+        "Avoid gradients on text. Use solid colors for maximum contrast."
+      ]
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Playfair Display, serif",
+        "body": "Outfit, sans-serif",
+        "arabic": "Tajawal, sans-serif"
+      },
+      "scale": {
+        "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+        "h2": "text-3xl md:text-4xl font-semibold",
+        "h3": "text-2xl font-medium",
+        "body": "text-base leading-relaxed",
+        "small": "text-sm text-muted-foreground"
+      },
+      "rules": [
+        "Headings in 'Playfair Display' to evoke luxury.",
+        "Body text in 'Outfit' for modern readability.",
+        "For Arabic content, switch font-family to 'Tajawal' and direction to RTL.",
+        "Use Gold color for key numbers (e.g., Deal Value, Lead Score)."
+      ]
+    },
+    "spacing": {
+      "container": "p-4 md:p-8 lg:p-12",
+      "card": "p-6",
+      "gap": "gap-4 md:gap-6",
+      "radius": "rounded-xl"
+    },
+    "shadows": {
+      "card": "shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)]",
+      "hover": "hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.15)]",
+      "gold_glow": "shadow-[0_0_15px_rgba(212,175,55,0.3)]"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#001F3F] text-white hover:bg-[#001F3F]/90 rounded-full px-8 py-3 font-medium transition-all",
+      "secondary": "bg-white text-[#001F3F] border border-[#001F3F] hover:bg-gray-50 rounded-full px-8 py-3 font-medium",
+      "gold": "bg-[#D4AF37] text-white hover:bg-[#D4AF37]/90 rounded-full px-8 py-3 font-medium shadow-lg"
+    },
+    "cards": {
+      "base": "bg-white rounded-xl border border-gray-100 shadow-sm hover:border-[#D4AF37]/30 transition-colors",
+      "lead_hot": "bg-white rounded-xl border-l-4 border-l-red-500 shadow-sm",
+      "lead_warm": "bg-white rounded-xl border-l-4 border-l-orange-400 shadow-sm",
+      "property": "group relative overflow-hidden rounded-2xl border-0 shadow-md"
+    },
+    "inputs": {
+      "base": "h-12 rounded-lg border-gray-200 focus:border-[#001F3F] focus:ring-[#001F3F]/20 bg-gray-50/50"
+    }
+  },
+  "layout_strategies": {
+    "mobile_first": true,
+    "rtl_support": true,
+    "grid_system": "grid grid-cols-1 md:grid-cols-12 gap-6",
+    "dashboard_structure": {
+      "sidebar": "hidden md:flex flex-col w-64 bg-[#001F3F] text-white h-screen fixed left-0 top-0 z-50",
+      "mobile_nav": "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 flex justify-around items-center z-50 pb-safe",
+      "main_content": "md:ml-64 min-h-screen bg-[#F8FAFC] p-4 pb-24 md:p-8"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.unsplash.com/photo-1768069794857-9306ac167c6e?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "property_luxury": "https://images.unsplash.com/photo-1638454795595-0a0abf68614d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "agent_profile": "https://images.unsplash.com/photo-1738750908048-14200459c3c9?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "dubai_skyline": "https://images.unsplash.com/photo-1743819464838-ead29229489e?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "icons": "Use Lucide React icons. For gold accents, apply 'text-[#D4AF37]'.",
+    "libraries": [
+      "lucide-react",
+      "recharts",
+      "framer-motion",
+      "date-fns",
+      "react-beautiful-dnd"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Implement a 'Day Luxury' theme: White backgrounds, Navy headers, Gold accents.",
+    "Ensure all text is legible in bright sunlight (high contrast).",
+    "Use 'Playfair Display' for all H1-H3 headings.",
+    "Use 'Outfit' for body text and UI elements.",
+    "Create a 'LeadScore' component that uses a circular progress bar with Gold/Navy colors.",
+    "The 'Pipeline' board must be horizontally scrollable on mobile.",
+    "For Arabic support, wrap the app in a DirectionProvider that toggles 'dir=rtl' on the root html tag.",
+    "Use the provided image URLs for placeholders.",
+    "Do NOT use gradients for backgrounds, only for subtle text effects or button hovers.",
+    "Add 'data-testid' to all interactive elements."
+  ],
+  "universal_guidelines": [
+    "Don't make generic centered layouts.",
+    "Create depth through layered design elements.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Never use AI assistant Emoji characters."
+  ]
+}
