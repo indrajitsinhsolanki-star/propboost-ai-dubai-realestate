@@ -321,7 +321,15 @@ async def get_leads(stage: Optional[str] = None, score_min: Optional[int] = None
         query.setdefault("score", {})["$lte"] = score_max
     
     leads = await db.leads.find(query, {"_id": 0}).to_list(1000)
-    return leads
+    
+    # Clean up any leads with ai_briefing as list (legacy data)
+    cleaned_leads = []
+    for lead in leads:
+        if isinstance(lead.get('ai_briefing'), list):
+            lead['ai_briefing'] = '\n• '.join(lead['ai_briefing'])
+        cleaned_leads.append(lead)
+    
+    return cleaned_leads
 
 @api_router.get("/leads/{lead_id}", response_model=Lead)
 async def get_lead(lead_id: str):
