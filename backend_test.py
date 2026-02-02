@@ -175,13 +175,9 @@ class PropBoostAPITester:
             print("❌ Skipped - No lead ID available")
             return False, {}
         
-        params = {
-            "lead_id": self.test_data['lead_id'],
-            "message_type": "reminder",
-            "language": "English"
-        }
+        endpoint = f"whatsapp/generate?lead_id={self.test_data['lead_id']}&message_type=reminder&language=English"
         
-        success, response = self.run_test("Generate WhatsApp Message", "POST", "whatsapp/generate", 200, params=params)
+        success, response = self.run_test("Generate WhatsApp Message", "POST", endpoint, 200)
         if success and 'id' in response:
             self.test_data['whatsapp_id'] = response['id']
             print(f"   Message: {response.get('message', 'N/A')[:100]}...")
