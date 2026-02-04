@@ -20,6 +20,8 @@ const navItems = [
 ];
 
 export default function Sidebar({ currentPath }) {
+  const { user, logout } = useAuth();
+  
   return (
     <aside className="hidden md:flex flex-col w-64 bg-[#001F3F] text-white h-screen fixed left-0 top-0 z-50">
       {/* Logo */}
