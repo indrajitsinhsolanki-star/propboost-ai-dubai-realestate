@@ -118,7 +118,100 @@ class PropBoostAPITester:
 
     def test_dashboard_stats(self):
         """Test dashboard statistics"""
-        return self.run_test("Dashboard Stats", "GET", "dashboard/stats", 200)
+        return self.run_test("Dashboard Stats", "GET", "dashboard/stats", 200, auth_required=True)
+
+    # ==================== LEAD TESTS (UPDATED FOR PHASE 2) ====================
+
+    def test_create_lead(self):
+        """Test lead creation with AI scoring and new Phase 2 fields"""
+        lead_data = {
+            "name": "Ahmed Al-Rashid",
+            "phone": "+971501234567",
+            "email": "ahmed.rashid@example.com",
+            "language_preference": "Arabic",
+            "lead_source": "Property Finder",  # NEW FIELD
+            "estimated_deal_value": 5500000,   # NEW FIELD
+            "property_interests": {
+                "location": "Downtown Dubai",
+                "bedrooms": "3",
+                "budget": "5000000",
+                "property_type": "Apartment"
+            },
+            "notes": "High-value client interested in luxury properties with sea view"
+        }
+        
+        success, response = self.run_test("Create Lead (Phase 2)", "POST", "leads", 200, lead_data, auth_required=True)
+        if success and 'id' in response:
+            self.test_data['lead_id'] = response['id']
+            print(f"   Lead Score: {response.get('score', 'N/A')}/10")
+            print(f"   Lead Source: {response.get('lead_source', 'N/A')}")
+            print(f"   Deal Value: {response.get('estimated_deal_value', 'N/A')} AED")
+            print(f"   AI Briefing: {response.get('ai_briefing', 'N/A')[:100]}...")
+            
+            # Check if Maya call was triggered for hot leads
+            if response.get('score', 0) > 7:
+                print(f"   🔥 Hot Lead - Maya call should be triggered")
+        return success, response
+
+    def test_get_leads(self):
+        """Test getting all leads"""
+        return self.run_test("Get All Leads", "GET", "leads", 200, auth_required=True)
+
+    def test_get_lead_by_id(self):
+        """Test getting specific lead"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        return self.run_test("Get Lead by ID", "GET", f"leads/{self.test_data['lead_id']}", 200, auth_required=True)
+
+    def test_rescore_lead(self):
+        """Test lead rescoring"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        return self.run_test("Rescore Lead", "POST", f"leads/{self.test_data['lead_id']}/rescore", 200, auth_required=True)
+
+    # ==================== ANALYTICS TESTS (NEW IN PHASE 2) ====================
+
+    def test_analytics_leaderboard(self):
+        """Test lead source leaderboard analytics"""
+        success, response = self.run_test("Analytics Leaderboard", "GET", "analytics/leaderboard", 200, auth_required=True)
+        if success and 'leaderboard' in response:
+            print(f"   Leaderboard entries: {len(response['leaderboard'])}")
+            for entry in response['leaderboard'][:3]:  # Show top 3
+                print(f"   #{entry.get('rank', 'N/A')}: {entry.get('source', 'N/A')} - {entry.get('conversion_rate', 0)}% conversion")
+        return success, response
+
+    def test_score_distribution(self):
+        """Test lead score distribution analytics"""
+        return self.run_test("Score Distribution", "GET", "analytics/score-distribution", 200, auth_required=True)
+
+    def test_source_performance(self):
+        """Test source performance analytics"""
+        return self.run_test("Source Performance", "GET", "analytics/source-performance", 200, auth_required=True)
+
+    # ==================== VOICE AI TESTS (NEW IN PHASE 2) ====================
+
+    def test_trigger_voice_call(self):
+        """Test Maya voice AI call trigger (simulated)"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        voice_data = {
+            "lead_id": self.test_data['lead_id'],
+            "language": "English"
+        }
+        
+        success, response = self.run_test("Trigger Maya Voice Call", "POST", "voice/trigger-call", 200, voice_data, auth_required=True)
+        if success:
+            print(f"   Call Status: {response.get('status', 'N/A')}")
+            print(f"   Call ID: {response.get('call_id', 'N/A')}")
+            if response.get('status') == 'simulated':
+                print(f"   ✓ Simulated response (expected - no Retell credentials)")
+        return success, response
 
     def test_create_lead(self):
         """Test lead creation with AI scoring"""
