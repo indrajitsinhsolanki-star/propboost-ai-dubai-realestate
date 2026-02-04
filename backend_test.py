@@ -243,7 +243,7 @@ class PropBoostAPITester:
             print("❌ Skipped - No lead ID available")
             return False, {}
         
-        return self.run_test("Get Lead by ID", "GET", f"leads/{self.test_data['lead_id']}", 200)
+        return self.run_test("Get Lead by ID", "GET", f"leads/{self.test_data['lead_id']}", 200, auth_required=True)
 
     def test_rescore_lead(self):
         """Test lead rescoring"""
@@ -251,7 +251,7 @@ class PropBoostAPITester:
             print("❌ Skipped - No lead ID available")
             return False, {}
         
-        return self.run_test("Rescore Lead", "POST", f"leads/{self.test_data['lead_id']}/rescore", 200)
+        return self.run_test("Rescore Lead", "POST", f"leads/{self.test_data['lead_id']}/rescore", 200, auth_required=True)
 
     def test_create_property(self):
         """Test property creation"""
