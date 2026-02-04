@@ -35,6 +35,7 @@ const getPlatformIcon = (id) => {
 };
 
 export default function ContentStudio() {
+  const { api } = useAuth();
   const [properties, setProperties] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [generatedContent, setGeneratedContent] = useState([]);
