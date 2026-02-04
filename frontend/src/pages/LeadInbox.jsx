@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { api } from "../App";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { useAuth } from "../App";
+import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -22,10 +22,16 @@ import {
   RefreshCw,
   ChevronRight,
   Sparkles,
-  Loader2
+  Loader2,
+  Users,
+  DollarSign,
+  Building
 } from "lucide-react";
 
+const LEAD_SOURCES = ["Property Finder", "Bayut", "Instagram", "WhatsApp", "Walk-in"];
+
 export default function LeadInbox() {
+  const { api } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -38,6 +44,8 @@ export default function LeadInbox() {
     phone: "",
     email: "",
     language_preference: "English",
+    lead_source: "Walk-in",
+    estimated_deal_value: "",
     property_interests: {
       location: "",
       bedrooms: "",
@@ -71,7 +79,10 @@ export default function LeadInbox() {
 
     setCreating(true);
     try {
-      const response = await api.createLead(newLead);
+      const response = await api.createLead({
+        ...newLead,
+        estimated_deal_value: parseFloat(newLead.estimated_deal_value) || 0
+      });
       setLeads([response.data, ...leads]);
       setShowAddDialog(false);
       setNewLead({
@@ -79,10 +90,17 @@ export default function LeadInbox() {
         phone: "",
         email: "",
         language_preference: "English",
+        lead_source: "Walk-in",
+        estimated_deal_value: "",
         property_interests: { location: "", bedrooms: "", budget: "", property_type: "" },
         notes: ""
       });
       toast.success(`Lead created with score: ${response.data.score}/10`);
+      
+      // Show Maya call notification for hot leads
+      if (response.data.score > 7) {
+        toast.info("Maya voice AI will contact this hot lead shortly", { duration: 5000 });
+      }
     } catch (error) {
       toast.error("Failed to create lead");
     } finally {
@@ -113,6 +131,16 @@ export default function LeadInbox() {
     if (score >= 8) return <Flame className="w-4 h-4" />;
     if (score >= 6) return <ThermometerSun className="w-4 h-4" />;
     return <Snowflake className="w-4 h-4" />;
+  };
+
+  const getSourceBadgeColor = (source) => {
+    switch(source) {
+      case "Property Finder": return "bg-blue-100 text-blue-700";
+      case "Bayut": return "bg-purple-100 text-purple-700";
+      case "Instagram": return "bg-pink-100 text-pink-700";
+      case "WhatsApp": return "bg-green-100 text-green-700";
+      default: return "bg-gray-100 text-gray-700";
+    }
   };
 
   const filteredLeads = leads.filter(lead => {
@@ -204,6 +232,35 @@ export default function LeadInbox() {
                       <SelectItem value="French">French</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Lead Source</Label>
+                  <Select 
+                    value={newLead.lead_source}
+                    onValueChange={(val) => setNewLead({...newLead, lead_source: val})}
+                  >
+                    <SelectTrigger data-testid="lead-source-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_SOURCES.map(source => (
+                        <SelectItem key={source} value={source}>{source}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Est. Deal Value (AED)</Label>
+                  <Input
+                    data-testid="lead-deal-value-input"
+                    type="number"
+                    placeholder="2,500,000"
+                    value={newLead.estimated_deal_value}
+                    onChange={(e) => setNewLead({...newLead, estimated_deal_value: e.target.value})}
+                  />
                 </div>
               </div>
 
@@ -374,12 +431,22 @@ export default function LeadInbox() {
                           <span className="text-lg font-bold">{lead.score}</span>
                         </div>
                         <div className="flex-1">
-                          <Link 
-                            to={`/leads/${lead.id}`}
-                            className="text-lg font-semibold text-[#0F172A] hover:text-[#D4AF37] transition-colors"
-                          >
-                            {lead.name}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link 
+                              to={`/leads/${lead.id}`}
+                              className="text-lg font-semibold text-[#0F172A] hover:text-[#D4AF37] transition-colors"
+                            >
+                              {lead.name}
+                            </Link>
+                            <Badge className={`text-xs ${getSourceBadgeColor(lead.lead_source)}`}>
+                              {lead.lead_source}
+                            </Badge>
+                            {lead.maya_call_status && (
+                              <Badge className="text-xs bg-purple-100 text-purple-700">
+                                Maya: {lead.maya_call_status}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Phone className="w-3 h-3" /> {lead.phone}
@@ -390,6 +457,11 @@ export default function LeadInbox() {
                             <span className="flex items-center gap-1">
                               <Globe className="w-3 h-3" /> {lead.language_preference}
                             </span>
+                            {lead.estimated_deal_value > 0 && (
+                              <span className="flex items-center gap-1 text-[#D4AF37] font-medium">
+                                <DollarSign className="w-3 h-3" /> {(lead.estimated_deal_value / 1000000).toFixed(1)}M AED
+                              </span>
+                            )}
                           </div>
                           {lead.ai_briefing && (
                             <p className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
@@ -438,16 +510,5 @@ export default function LeadInbox() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function Users({ className }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
   );
 }
