@@ -3,7 +3,8 @@ import {
   LayoutDashboard, 
   Users, 
   FileText, 
-  GitBranch
+  GitBranch,
+  BarChart3
 } from "lucide-react";
 
 const navItems = [
@@ -11,6 +12,7 @@ const navItems = [
   { path: "/leads", icon: Users, label: "Leads" },
   { path: "/content", icon: FileText, label: "Content" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
+  { path: "/analytics", icon: BarChart3, label: "Analytics" },
 ];
 
 export default function MobileNav({ currentPath }) {
