@@ -272,17 +272,19 @@ class PropBoostAPITester:
             "images": []
         }
         
-        success, response = self.run_test("Create Property", "POST", "properties", 200, property_data)
+        success, response = self.run_test("Create Property", "POST", "properties", 200, property_data, auth_required=True)
         if success and 'id' in response:
             self.test_data['property_id'] = response['id']
         return success, response
 
     def test_get_properties(self):
         """Test getting all properties"""
-        return self.run_test("Get All Properties", "GET", "properties", 200)
+        return self.run_test("Get All Properties", "GET", "properties", 200, auth_required=True)
+
+    # ==================== CONTENT GENERATION TESTS (RERA COMPLIANCE) ====================
 
     def test_generate_content(self):
-        """Test AI content generation"""
+        """Test AI content generation with RERA compliance"""
         if 'property_id' not in self.test_data:
             print("❌ Skipped - No property ID available")
             return False, {}
@@ -293,11 +295,21 @@ class PropBoostAPITester:
             "languages": ["English", "Arabic"]
         }
         
-        success, response = self.run_test("Generate Content", "POST", "content/generate", 200, content_request)
+        success, response = self.run_test("Generate Content (RERA Compliant)", "POST", "content/generate", 200, content_request, auth_required=True)
         if success and 'contents' in response:
             print(f"   Generated {response.get('count', 0)} content pieces")
             if response['contents']:
                 self.test_data['content_id'] = response['contents'][0]['id']
+                # Check for RERA compliance
+                content = response['contents'][0]
+                print(f"   Compliance Status: {content.get('compliance_status', 'N/A')}")
+                if content.get('compliance_flags'):
+                    print(f"   Compliance Flags: {content['compliance_flags']}")
+                # Check for AI disclaimer
+                if '[AI-Generated Content]' in content.get('content', ''):
+                    print(f"   ✓ AI disclaimer present")
+                else:
+                    print(f"   ⚠️ AI disclaimer missing")
         return success, response
 
     def test_get_property_content(self):
@@ -306,7 +318,7 @@ class PropBoostAPITester:
             print("❌ Skipped - No property ID available")
             return False, {}
         
-        return self.run_test("Get Property Content", "GET", f"content/{self.test_data['property_id']}", 200)
+        return self.run_test("Get Property Content", "GET", f"content/{self.test_data['property_id']}", 200, auth_required=True)
 
     def test_approve_content(self):
         """Test content approval"""
@@ -319,7 +331,9 @@ class PropBoostAPITester:
             "approved": True
         }
         
-        return self.run_test("Approve Content", "PUT", f"content/{self.test_data['content_id']}/approve", 200, approval_data)
+        return self.run_test("Approve Content", "PUT", f"content/{self.test_data['content_id']}/approve", 200, approval_data, auth_required=True)
+
+    # ==================== MESSAGING TESTS (SIMULATED INTEGRATIONS) ====================
 
     def test_generate_whatsapp_message(self):
         """Test WhatsApp message generation"""
@@ -329,10 +343,13 @@ class PropBoostAPITester:
         
         endpoint = f"whatsapp/generate?lead_id={self.test_data['lead_id']}&message_type=reminder&language=English"
         
-        success, response = self.run_test("Generate WhatsApp Message", "POST", endpoint, 200)
+        success, response = self.run_test("Generate WhatsApp Message", "POST", endpoint, 200, auth_required=True)
         if success and 'id' in response:
             self.test_data['whatsapp_id'] = response['id']
             print(f"   Message: {response.get('message', 'N/A')[:100]}...")
+            # Check for AI disclaimer
+            if '[AI-Assisted Content]' in response.get('message', ''):
+                print(f"   ✓ AI disclaimer present")
         return success, response
 
     def test_approve_whatsapp(self):
@@ -341,7 +358,7 @@ class PropBoostAPITester:
             print("❌ Skipped - No WhatsApp message ID available")
             return False, {}
         
-        return self.run_test("Approve WhatsApp", "PUT", f"whatsapp/{self.test_data['whatsapp_id']}/approve", 200)
+        return self.run_test("Approve WhatsApp", "PUT", f"whatsapp/{self.test_data['whatsapp_id']}/approve", 200, auth_required=True)
 
     def test_send_whatsapp(self):
         """Test WhatsApp message sending (simulated)"""
@@ -349,7 +366,48 @@ class PropBoostAPITester:
             print("❌ Skipped - No WhatsApp message ID available")
             return False, {}
         
-        return self.run_test("Send WhatsApp", "PUT", f"whatsapp/{self.test_data['whatsapp_id']}/send", 200)
+        success, response = self.run_test("Send WhatsApp (Simulated)", "PUT", f"whatsapp/{self.test_data['whatsapp_id']}/send", 200, auth_required=True)
+        if success:
+            print(f"   Send Status: {response.get('status', 'N/A')}")
+            if response.get('status') == 'sent' and 'SIM_' in response.get('twilio_sid', ''):
+                print(f"   ✓ Simulated response (expected - no Twilio credentials)")
+        return success, response
+
+    def test_generate_email(self):
+        """Test email generation"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        endpoint = f"email/generate?lead_id={self.test_data['lead_id']}&subject=Property%20Viewing%20Reminder&message_type=reminder&language=English"
+        
+        success, response = self.run_test("Generate Email", "POST", endpoint, 200, auth_required=True)
+        if success and 'id' in response:
+            self.test_data['email_id'] = response['id']
+            print(f"   Subject: {response.get('subject', 'N/A')}")
+            print(f"   Body: {response.get('body', 'N/A')[:100]}...")
+        return success, response
+
+    def test_approve_email(self):
+        """Test email approval"""
+        if 'email_id' not in self.test_data:
+            print("❌ Skipped - No email ID available")
+            return False, {}
+        
+        return self.run_test("Approve Email", "PUT", f"email/{self.test_data['email_id']}/approve", 200, auth_required=True)
+
+    def test_send_email(self):
+        """Test email sending (simulated)"""
+        if 'email_id' not in self.test_data:
+            print("❌ Skipped - No email ID available")
+            return False, {}
+        
+        success, response = self.run_test("Send Email (Simulated)", "PUT", f"email/{self.test_data['email_id']}/send", 200, auth_required=True)
+        if success:
+            print(f"   Send Status: {response.get('status', 'N/A')}")
+            if response.get('status') == 'sent' and 'SIM_' in response.get('message_id', ''):
+                print(f"   ✓ Simulated response (expected - no SendGrid credentials)")
+        return success, response
 
     def test_update_pipeline_stage(self):
         """Test pipeline stage update"""
