@@ -30,6 +30,7 @@ import {
 export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { api } = useAuth();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rescoring, setRescoring] = useState(false);
