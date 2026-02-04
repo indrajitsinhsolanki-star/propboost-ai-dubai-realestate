@@ -64,6 +64,58 @@ class PropBoostAPITester:
         """Test root API endpoint"""
         return self.run_test("Root API", "GET", "", 200)
 
+    # ==================== AUTHENTICATION TESTS ====================
+    
+    def test_user_signup(self):
+        """Test user registration"""
+        timestamp = datetime.now().strftime("%H%M%S")
+        signup_data = {
+            "name": "Test Agent",
+            "email": f"test.agent.{timestamp}@propboost.ai",
+            "password": "TestPass123!",
+            "company": "PropBoost Testing",
+            "phone": "+971501234567"
+        }
+        
+        success, response = self.run_test("User Signup", "POST", "auth/signup", 200, signup_data)
+        if success and 'token' in response:
+            self.auth_token = response['token']
+            self.test_data['user_id'] = response['user']['user_id']
+            print(f"   User ID: {response['user']['user_id']}")
+            print(f"   Token: {self.auth_token[:20]}...")
+        return success, response
+
+    def test_user_login(self):
+        """Test user login"""
+        # Use the same credentials from signup
+        timestamp = datetime.now().strftime("%H%M%S")
+        login_data = {
+            "email": f"test.agent.{timestamp}@propboost.ai",
+            "password": "TestPass123!"
+        }
+        
+        success, response = self.run_test("User Login", "POST", "auth/login", 200, login_data)
+        if success and 'token' in response:
+            self.auth_token = response['token']
+            print(f"   Login Token: {self.auth_token[:20]}...")
+        return success, response
+
+    def test_get_current_user(self):
+        """Test getting current authenticated user"""
+        return self.run_test("Get Current User", "GET", "auth/me", 200, auth_required=True)
+
+    def test_protected_route_without_auth(self):
+        """Test that protected routes require authentication"""
+        # Temporarily remove token
+        temp_token = self.auth_token
+        self.auth_token = None
+        
+        success, response = self.run_test("Protected Route (No Auth)", "GET", "leads", 401, auth_required=False)
+        
+        # Restore token
+        self.auth_token = temp_token
+        return success, response
+
     def test_dashboard_stats(self):
         """Test dashboard statistics"""
         return self.run_test("Dashboard Stats", "GET", "dashboard/stats", 200)
