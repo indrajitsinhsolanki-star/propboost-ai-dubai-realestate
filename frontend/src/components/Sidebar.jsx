@@ -71,17 +71,31 @@ export default function Sidebar({ currentPath }) {
           <Settings className="w-5 h-5" />
           <span className="font-medium">Settings</span>
         </Link>
+        <button
+          onClick={logout}
+          className="flex items-center gap-3 px-4 py-3 text-white/70 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-all w-full mt-1"
+          data-testid="logout-btn"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Logout</span>
+        </button>
       </div>
 
       {/* Agent Info */}
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center">
-            <span className="text-[#D4AF37] font-semibold">AA</span>
+          <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center overflow-hidden">
+            {user?.picture ? (
+              <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[#D4AF37] font-semibold">
+                {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+              </span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Ahmed Al Rashid</p>
-            <p className="text-xs text-white/50">Solo Plan</p>
+            <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-white/50">{user?.company || 'Solo Plan'}</p>
           </div>
         </div>
       </div>
