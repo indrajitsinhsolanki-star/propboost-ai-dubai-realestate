@@ -26,6 +26,8 @@ class PropBoostAPITester:
         print(f"   URL: {url}")
         if auth_required:
             print(f"   Auth: {'✓' if self.auth_token else '✗'}")
+            if not self.auth_token:
+                print(f"   ❌ No auth token available!")
         
         try:
             if method == 'GET':
