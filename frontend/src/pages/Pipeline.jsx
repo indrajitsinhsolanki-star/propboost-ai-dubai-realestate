@@ -26,6 +26,7 @@ const STAGES = [
 ];
 
 export default function Pipeline() {
+  const { api } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
