@@ -1554,9 +1554,10 @@ async def get_compliance_audits(limit: int = 50, user: dict = Depends(require_au
 app.include_router(auth_router)
 app.include_router(api_router)
 
+# CORS configuration - allow all origins for development
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
