@@ -436,33 +436,63 @@ class PropBoostAPITester:
         return self.run_test("User Logout", "POST", "auth/logout", 200, auth_required=True)
 
 def main():
-    print("🚀 Starting PropBoost AI API Testing...")
+    print("🚀 Starting PropBoost AI Phase 2 API Testing...")
     print("=" * 60)
     
     tester = PropBoostAPITester()
     
-    # Test sequence
+    # Test sequence - Phase 2 comprehensive testing
     test_methods = [
+        # Basic API
         tester.test_root_endpoint,
+        
+        # Authentication (Phase 2)
+        tester.test_user_signup,
+        tester.test_user_login,
+        tester.test_get_current_user,
+        tester.test_protected_route_without_auth,
+        
+        # Dashboard & Analytics
         tester.test_dashboard_stats,
+        tester.test_analytics_leaderboard,
+        tester.test_score_distribution,
+        tester.test_source_performance,
+        
+        # Leads (Updated for Phase 2)
         tester.test_create_lead,
         tester.test_get_leads,
         tester.test_get_lead_by_id,
         tester.test_rescore_lead,
+        
+        # Voice AI (Phase 2)
+        tester.test_trigger_voice_call,
+        
+        # Properties & Content
         tester.test_create_property,
         tester.test_get_properties,
         tester.test_generate_content,
         tester.test_get_property_content,
         tester.test_approve_content,
+        
+        # Messaging (Phase 2 - Simulated)
         tester.test_generate_whatsapp_message,
         tester.test_approve_whatsapp,
         tester.test_send_whatsapp,
+        tester.test_generate_email,
+        tester.test_approve_email,
+        tester.test_send_email,
+        
+        # Pipeline & Logs
         tester.test_update_pipeline_stage,
         tester.test_pipeline_stats,
-        tester.test_activity_logs
+        tester.test_activity_logs,
+        tester.test_compliance_audits,
+        
+        # Logout
+        tester.test_logout
     ]
     
-    print(f"\n📋 Running {len(test_methods)} API tests...")
+    print(f"\n📋 Running {len(test_methods)} Phase 2 API tests...")
     
     for test_method in test_methods:
         try:
@@ -475,7 +505,7 @@ def main():
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All API tests passed!")
+        print("🎉 All Phase 2 API tests passed!")
         return 0
     else:
         print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
