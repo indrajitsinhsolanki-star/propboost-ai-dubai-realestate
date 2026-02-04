@@ -87,16 +87,34 @@ class PropBoostAPITester:
 
     def test_user_login(self):
         """Test user login"""
-        # Use the same credentials from signup
+        # Create a test user first if not exists
         timestamp = datetime.now().strftime("%H%M%S")
+        test_email = f"test.agent.{timestamp}@propboost.ai"
+        
+        # Try to create user first (might fail if exists, that's ok)
+        signup_data = {
+            "name": "Test Agent",
+            "email": test_email,
+            "password": "TestPass123!",
+            "company": "PropBoost Testing",
+            "phone": "+971501234567"
+        }
+        
+        try:
+            requests.post(f"{self.api_url}/auth/signup", json=signup_data)
+        except:
+            pass  # User might already exist
+        
+        # Now login
         login_data = {
-            "email": f"test.agent.{timestamp}@propboost.ai",
+            "email": test_email,
             "password": "TestPass123!"
         }
         
         success, response = self.run_test("User Login", "POST", "auth/login", 200, login_data)
         if success and 'token' in response:
             self.auth_token = response['token']
+            self.test_data['test_email'] = test_email
             print(f"   Login Token: {self.auth_token[:20]}...")
         return success, response
 
