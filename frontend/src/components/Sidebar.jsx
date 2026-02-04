@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../App";
 import { 
   LayoutDashboard, 
   Users, 
@@ -6,7 +7,8 @@ import {
   GitBranch,
   Settings,
   LogOut,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from "lucide-react";
 
 const navItems = [
@@ -14,6 +16,7 @@ const navItems = [
   { path: "/leads", icon: Users, label: "Lead Inbox" },
   { path: "/content", icon: FileText, label: "Content Studio" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
+  { path: "/analytics", icon: BarChart3, label: "Analytics" },
 ];
 
 export default function Sidebar({ currentPath }) {
