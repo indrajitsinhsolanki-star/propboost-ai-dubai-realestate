@@ -466,11 +466,11 @@ def main():
         
         # Authentication (Phase 2)
         tester.test_user_signup,
-        tester.test_user_login,
+        # Skip separate login test since signup already gives us token
         tester.test_get_current_user,
         tester.test_protected_route_without_auth,
         
-        # Dashboard & Analytics
+        # Dashboard & Analytics (with auth)
         tester.test_dashboard_stats,
         tester.test_analytics_leaderboard,
         tester.test_score_distribution,
@@ -506,7 +506,10 @@ def main():
         tester.test_activity_logs,
         tester.test_compliance_audits,
         
-        # Logout
+        # Test login separately
+        tester.test_user_login,
+        
+        # Logout (at the end)
         tester.test_logout
     ]
     
