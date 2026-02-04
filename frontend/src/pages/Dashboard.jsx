@@ -96,7 +96,7 @@ export default function Dashboard() {
           <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A]" style={{ fontFamily: 'Playfair Display, serif' }}>
             Dashboard
           </h1>
-          <p className="text-gray-500 mt-1">Welcome back, Ahmed. Here's your overview.</p>
+          <p className="text-gray-500 mt-1">Welcome back, {user?.name?.split(' ')[0] || 'Agent'}. Here's your overview.</p>
         </div>
         <div className="flex gap-3">
           <Link to="/leads">
