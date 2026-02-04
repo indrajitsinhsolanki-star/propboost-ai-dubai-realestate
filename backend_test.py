@@ -417,15 +417,23 @@ class PropBoostAPITester:
         
         endpoint = f"pipeline/{self.test_data['lead_id']}/stage?stage=qualified&probability=70"
         
-        return self.run_test("Update Pipeline Stage", "PUT", endpoint, 200)
+        return self.run_test("Update Pipeline Stage", "PUT", endpoint, 200, auth_required=True)
 
     def test_pipeline_stats(self):
         """Test pipeline statistics"""
-        return self.run_test("Pipeline Stats", "GET", "pipeline/stats", 200)
+        return self.run_test("Pipeline Stats", "GET", "pipeline/stats", 200, auth_required=True)
 
     def test_activity_logs(self):
         """Test activity logs"""
-        return self.run_test("Activity Logs", "GET", "activity-logs", 200)
+        return self.run_test("Activity Logs", "GET", "activity-logs", 200, auth_required=True)
+
+    def test_compliance_audits(self):
+        """Test compliance audit logs"""
+        return self.run_test("Compliance Audits", "GET", "compliance-audits", 200, auth_required=True)
+
+    def test_logout(self):
+        """Test user logout"""
+        return self.run_test("User Logout", "POST", "auth/logout", 200, auth_required=True)
 
 def main():
     print("🚀 Starting PropBoost AI API Testing...")
