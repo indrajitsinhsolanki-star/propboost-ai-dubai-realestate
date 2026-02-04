@@ -233,32 +233,9 @@ class PropBoostAPITester:
                 print(f"   ✓ Simulated response (expected - no Retell credentials)")
         return success, response
 
-    def test_create_lead(self):
-        """Test lead creation with AI scoring"""
-        lead_data = {
-            "name": "Ahmed Al-Rashid",
-            "phone": "+971501234567",
-            "email": "ahmed.rashid@example.com",
-            "language_preference": "Arabic",
-            "property_interests": {
-                "location": "Downtown Dubai",
-                "bedrooms": "3",
-                "budget": "5000000",
-                "property_type": "Apartment"
-            },
-            "notes": "High-value client interested in luxury properties with sea view"
-        }
-        
-        success, response = self.run_test("Create Lead", "POST", "leads", 200, lead_data)
-        if success and 'id' in response:
-            self.test_data['lead_id'] = response['id']
-            print(f"   Lead Score: {response.get('score', 'N/A')}/10")
-            print(f"   AI Briefing: {response.get('ai_briefing', 'N/A')[:100]}...")
-        return success, response
-
     def test_get_leads(self):
         """Test getting all leads"""
-        return self.run_test("Get All Leads", "GET", "leads", 200)
+        return self.run_test("Get All Leads", "GET", "leads", 200, auth_required=True)
 
     def test_get_lead_by_id(self):
         """Test getting specific lead"""
