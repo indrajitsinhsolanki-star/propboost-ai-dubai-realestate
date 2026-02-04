@@ -18,9 +18,9 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - Agent Approval Workflow (RERA compliance)
 - Mobile-responsive design
 
-## What's Been Implemented (Phase 1 MVP - Feb 2026)
+## What's Been Implemented
 
-### Backend (FastAPI + MongoDB)
+### Phase 1 MVP (Feb 2026)
 - ✅ Lead CRUD with AI scoring via Claude Sonnet 4.5
 - ✅ Property management CRUD
 - ✅ Multilingual content generation (Instagram, Facebook, WhatsApp, Email, SEO)
@@ -28,42 +28,52 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - ✅ WhatsApp message generation (simulated)
 - ✅ Pipeline stage management with probability tracking
 - ✅ Activity logging for compliance
-
-### Frontend (React + Shadcn UI)
 - ✅ Dashboard with stats cards and charts
 - ✅ Lead Inbox with Hot/Warm/Cold tabs
-- ✅ Lead Detail with AI briefing and WhatsApp messaging
 - ✅ Content Studio with property form and multilingual preview
 - ✅ Pipeline Tracker (Kanban board)
 - ✅ Navy/Gold Dubai luxury theme
 - ✅ Mobile-responsive navigation
 
-### Integrations
-- ✅ Claude Sonnet 4.5 (via Emergent LLM key) for AI scoring and content
-- ⏸️ WhatsApp Business API (MOCKED - copy to clipboard)
-- ⏸️ Email Service (MOCKED - copy to clipboard)
-- ⏸️ Social Media Publishing (MOCKED - copy to clipboard)
+### Phase 2 Operational Beta (Feb 2026)
+- ✅ JWT-based email/password authentication
+- ✅ Google OAuth via Emergent-managed auth
+- ✅ Protected routes requiring authentication
+- ✅ Lead Leaderboard Analytics module
+- ✅ New lead fields: lead_source, estimated_deal_value
+- ✅ Conversion rate and revenue tracking by source
+- ✅ Voice AI "Maya" integration (Retell AI - PLUG-AND-PLAY)
+- ✅ Auto-trigger Maya calls for hot leads (score > 7)
+- ✅ Twilio WhatsApp integration (PLUG-AND-PLAY)
+- ✅ SendGrid Email integration (PLUG-AND-PLAY)
+- ✅ RERA/DLD compliance validation (blocks investment guarantees)
+- ✅ AI-generated content disclaimer enforcement
+- ✅ Compliance audit trail logging
+- ✅ User profile display in sidebar
+- ✅ Logout functionality
+
+### Integrations Status
+- ✅ Claude Sonnet 4.5 (via Emergent LLM key) - ACTIVE
+- ✅ Google OAuth (via Emergent Auth) - ACTIVE
+- ⏸️ Twilio WhatsApp API - PLUG-AND-PLAY (add credentials)
+- ⏸️ SendGrid Email API - PLUG-AND-PLAY (add credentials)
+- ⏸️ Retell AI Voice API - PLUG-AND-PLAY (add credentials)
 
 ## Prioritized Backlog
 
 ### P0 - Critical (Next Sprint)
-- Real WhatsApp Business API integration (Twilio)
-- Email service integration (SendGrid)
-- User authentication (JWT)
-
-### P1 - High Priority
-- Automated follow-up sequences
 - Property portal API sync (Property Finder, Bayut)
 - Social media auto-publishing (Meta Business API)
-- Team collaboration features
+- Automated follow-up sequences
 
-### P2 - Medium Priority
-- Voice AI integration (Retell AI)
-- Predictive deal analytics
+### P1 - High Priority
+- Team collaboration features
 - Advanced reporting dashboard
 - Multi-tenant architecture
+- Real-time notifications
 
-### P3 - Future Enhancements
+### P2 - Medium Priority
+- Predictive deal analytics with ML
 - CRM integrations (Salesforce, HubSpot)
 - Payment processing for subscriptions
 - Mobile app (React Native)
@@ -71,10 +81,24 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 
 ## Technical Architecture
 - **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts
-- **Backend**: FastAPI, Motor (async MongoDB), Pydantic
+- **Backend**: FastAPI, Motor (async MongoDB), Pydantic, JWT
 - **AI**: Claude Sonnet 4.5 via emergentintegrations
+- **Auth**: JWT + Emergent Google OAuth
 - **Database**: MongoDB
+- **Voice AI**: Retell AI (plug-and-play)
+- **Messaging**: Twilio WhatsApp, SendGrid Email (plug-and-play)
 - **Fonts**: Playfair Display (headings), Outfit (body), Tajawal (Arabic)
+
+## Environment Variables (Backend)
+```
+# Required (configured)
+MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, JWT_SECRET
+
+# Plug-and-Play (add when ready)
+TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER
+SENDGRID_API_KEY, SENDGRID_FROM_EMAIL
+RETELL_API_KEY, RETELL_AGENT_ID, RETELL_FROM_NUMBER
+```
 
 ## Pricing Tiers (Planned)
 - Solo: AED 999/month (1 agent, 100 leads/month)
@@ -82,8 +106,8 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - Enterprise: AED 4,999/month (20 agents, unlimited)
 
 ## Next Tasks
-1. Add user authentication (email/password)
-2. Integrate real WhatsApp Business API
-3. Add SendGrid for email notifications
-4. Implement automated follow-up sequences
-5. Add analytics dashboard with conversion metrics
+1. Add property portal API integrations (Property Finder, Bayut)
+2. Implement automated follow-up sequences
+3. Add real-time notifications (WebSocket)
+4. Build team collaboration features
+5. Add advanced predictive analytics
