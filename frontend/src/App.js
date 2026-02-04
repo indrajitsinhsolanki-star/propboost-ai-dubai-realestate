@@ -35,8 +35,8 @@ const createApi = (token) => {
     // Auth
     login: (data) => axios.post(`${API}/auth/login`, data),
     signup: (data) => axios.post(`${API}/auth/signup`, data),
-    getMe: () => axios.get(`${API}/auth/me`, { headers, withCredentials: true }),
-    logout: () => axios.post(`${API}/auth/logout`, {}, { headers, withCredentials: true }),
+    getMe: () => axios.get(`${API}/auth/me`, { headers }),
+    logout: () => axios.post(`${API}/auth/logout`, {}, { headers }),
     getSession: (sessionId) => axios.get(`${API}/auth/session`, { 
       headers: { ...headers, "X-Session-ID": sessionId }
     }),
