@@ -48,7 +48,7 @@ export default function ForgotPassword() {
               We've sent password reset instructions to <strong>{email}</strong>
             </p>
             <p className="text-sm text-gray-500">
-              Didn't receive the email? Check your spam folder or try again.
+              Didn&apos;t receive the email? Check your spam folder or try again.
             </p>
             <div className="pt-4 space-y-3">
               <Button 
@@ -81,7 +81,7 @@ export default function ForgotPassword() {
             Reset Password
           </CardTitle>
           <CardDescription>
-            Enter your email and we'll send you instructions to reset your password
+            Enter your email and we&apos;ll send you instructions to reset your password
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
