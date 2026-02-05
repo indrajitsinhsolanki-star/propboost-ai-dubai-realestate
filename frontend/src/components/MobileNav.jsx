@@ -4,7 +4,8 @@ import {
   Users, 
   FileText, 
   GitBranch,
-  BarChart3
+  BarChart3,
+  Mic
 } from "lucide-react";
 
 const navItems = [
@@ -12,7 +13,7 @@ const navItems = [
   { path: "/leads", icon: Users, label: "Leads" },
   { path: "/content", icon: FileText, label: "Content" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
-  { path: "/analytics", icon: BarChart3, label: "Analytics" },
+  { path: "/voice-ai", icon: Mic, label: "Maya" },
 ];
 
 export default function MobileNav({ currentPath }) {
