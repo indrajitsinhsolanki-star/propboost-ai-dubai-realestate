@@ -166,6 +166,7 @@ function AppContent() {
           <Route path="/content" element={<ProtectedRoute><ContentStudio /></ProtectedRoute>} />
           <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/voice-ai" element={<ProtectedRoute><VoiceAIDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
