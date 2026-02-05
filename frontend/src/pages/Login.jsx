@@ -28,7 +28,17 @@ export default function Login() {
       toast.success("Welcome back!");
       navigate("/");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Login failed");
+      const errorMessage = error.response?.data?.detail || "Login failed";
+      toast.error(errorMessage);
+      
+      // If OAuth-only user, highlight the Google button
+      if (errorMessage.includes("Google Sign-In")) {
+        const googleBtn = document.querySelector('[data-testid="google-login-btn"]');
+        if (googleBtn) {
+          googleBtn.classList.add('ring-2', 'ring-[#D4AF37]', 'ring-offset-2');
+          setTimeout(() => googleBtn.classList.remove('ring-2', 'ring-[#D4AF37]', 'ring-offset-2'), 3000);
+        }
+      }
     } finally {
       setLoading(false);
     }
