@@ -622,6 +622,16 @@ async def trigger_maya_call(lead: dict, language: str = "English") -> dict:
                 }
             )
             result = response.json()
+            
+            # Handle Retell API errors
+            if result.get("status") == "error":
+                logging.warning(f"Retell API error: {result.get('message')}")
+                return {
+                    "status": "failed",
+                    "call_id": "",
+                    "message": f"Retell error: {result.get('message', 'Unknown error')}"
+                }
+            
             return {
                 "status": "initiated",
                 "call_id": result.get("call_id", ""),
