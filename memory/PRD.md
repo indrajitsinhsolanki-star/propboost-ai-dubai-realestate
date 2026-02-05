@@ -95,10 +95,15 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 # Required (configured)
 MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, JWT_SECRET
 
+# Vapi Voice AI (configured)
+VAPI_API_KEY, VAPI_ASSISTANT_ID, VAPI_PHONE_NUMBER_ID
+
+# Twilio - Carrier for Vapi (configured)
+TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+
 # Plug-and-Play (add when ready)
-TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER
+TWILIO_WHATSAPP_NUMBER (for WhatsApp Business)
 SENDGRID_API_KEY, SENDGRID_FROM_EMAIL
-RETELL_API_KEY, RETELL_AGENT_ID, RETELL_FROM_NUMBER
 ```
 
 ## Pricing Tiers (Planned)
