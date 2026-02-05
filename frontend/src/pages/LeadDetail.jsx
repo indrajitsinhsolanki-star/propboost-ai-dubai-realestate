@@ -4,7 +4,6 @@ import { useAuth } from "../App";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Textarea } from "../components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
 import { 
@@ -24,7 +23,11 @@ import {
   Flame,
   ThermometerSun,
   Snowflake,
-  Clock
+  Clock,
+  PhoneCall,
+  PhoneOff,
+  PhoneForwarded,
+  Mic
 } from "lucide-react";
 
 export default function LeadDetail() {
@@ -38,6 +41,7 @@ export default function LeadDetail() {
   const [generatingMessage, setGeneratingMessage] = useState(false);
   const [messageType, setMessageType] = useState("reminder");
   const [messageLanguage, setMessageLanguage] = useState("English");
+  const [triggeringCall, setTriggeringCall] = useState(false);
 
   useEffect(() => {
     loadLead();
@@ -78,12 +82,26 @@ export default function LeadDetail() {
     }
   };
 
+  const handleTriggerMayaCall = async () => {
+    setTriggeringCall(true);
+    try {
+      const response = await api.triggerVoiceCall(id, lead.language_preference || "English");
+      toast.success(`Maya call ${response.data.status}: ${response.data.message}`);
+      // Reload lead to get updated call status
+      await loadLead();
+    } catch (error) {
+      toast.error("Failed to trigger Maya call");
+    } finally {
+      setTriggeringCall(false);
+    }
+  };
+
   const handleGenerateMessage = async () => {
     setGeneratingMessage(true);
     try {
       const response = await api.generateWhatsApp(id, messageType, messageLanguage);
       setMessages([response.data, ...messages]);
-      toast.success("Message generated!");
+      toast.success("Message generated! Review and approve before sending.");
     } catch (error) {
       toast.error("Failed to generate message");
     } finally {
@@ -100,7 +118,7 @@ export default function LeadDetail() {
     try {
       await api.approveWhatsApp(messageId);
       setMessages(messages.map(m => m.id === messageId ? {...m, status: "approved"} : m));
-      toast.success("Message approved!");
+      toast.success("Message approved! Click 'Send' to deliver.");
     } catch (error) {
       toast.error("Failed to approve message");
     }
@@ -108,11 +126,11 @@ export default function LeadDetail() {
 
   const handleSendMessage = async (messageId) => {
     try {
-      await api.sendWhatsApp(messageId);
+      const response = await api.sendWhatsApp(messageId);
       setMessages(messages.map(m => m.id === messageId ? {...m, status: "sent"} : m));
-      toast.success("Message sent (simulated)!");
+      toast.success(response.data.message || "Message sent!");
     } catch (error) {
-      toast.error("Failed to send message");
+      toast.error(error.response?.data?.detail || "Failed to send message");
     }
   };
 
@@ -126,6 +144,21 @@ export default function LeadDetail() {
     if (score >= 8) return <Flame className="w-5 h-5" />;
     if (score >= 6) return <ThermometerSun className="w-5 h-5" />;
     return <Snowflake className="w-5 h-5" />;
+  };
+
+  const getMayaCallStatusBadge = (status) => {
+    switch(status) {
+      case "initiated":
+        return <Badge className="bg-blue-500"><PhoneForwarded className="w-3 h-3 mr-1" />Call Initiated</Badge>;
+      case "simulated":
+        return <Badge className="bg-purple-500"><PhoneCall className="w-3 h-3 mr-1" />Simulated (Demo)</Badge>;
+      case "completed":
+        return <Badge className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Call Completed</Badge>;
+      case "failed":
+        return <Badge className="bg-red-500"><PhoneOff className="w-3 h-3 mr-1" />Call Failed</Badge>;
+      default:
+        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+    }
   };
 
   if (loading) {
@@ -203,6 +236,55 @@ export default function LeadDetail() {
                   <h4 className="font-medium text-[#001F3F] mb-2">AI Briefing</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.ai_briefing}</p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Voice AI Maya Status Card */}
+          <Card className="bg-white border border-gray-100 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <Mic className="w-5 h-5 text-purple-500" />
+                Voice AI "Maya" Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-purple-50 rounded-xl">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
+                    <PhoneCall className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Call Status:</span>
+                      {getMayaCallStatusBadge(lead.maya_call_status)}
+                    </div>
+                    {lead.maya_call_id && (
+                      <p className="text-xs text-gray-500 mt-1">Call ID: {lead.maya_call_id}</p>
+                    )}
+                    {!lead.maya_call_status && lead.score > 7 && (
+                      <p className="text-sm text-purple-600 mt-1">Hot lead eligible for Maya outreach</p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleTriggerMayaCall}
+                  disabled={triggeringCall}
+                  data-testid="trigger-maya-call-btn"
+                  className="bg-purple-600 hover:bg-purple-700 rounded-full"
+                >
+                  {triggeringCall ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <PhoneCall className="w-4 h-4 mr-2" />
+                  )}
+                  {lead.maya_call_status ? "Retry Call" : "Trigger Maya Call"}
+                </Button>
+              </div>
+              {lead.maya_call_status === "simulated" && (
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  ⚠️ Simulated mode: Add RETELL_API_KEY to .env for real calls
+                </p>
               )}
             </CardContent>
           </Card>
@@ -366,6 +448,12 @@ export default function LeadDetail() {
                 </Button>
               </div>
 
+              {/* Approval Workflow Notice */}
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+                <strong>Approval Workflow:</strong> Messages must be approved before sending. 
+                Click "Approve" then "Send" to deliver via WhatsApp.
+              </div>
+
               {/* Message List */}
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {messages.length === 0 ? (
@@ -391,7 +479,7 @@ export default function LeadDetail() {
                       <p className="text-sm text-gray-700 mb-2" dir={msg.language === 'Arabic' ? 'rtl' : 'ltr'}>
                         {msg.message}
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
                           size="sm" 
                           variant="outline"
