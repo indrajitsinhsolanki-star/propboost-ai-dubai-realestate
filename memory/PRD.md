@@ -55,9 +55,9 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 ### Integrations Status
 - ✅ Claude Sonnet 4.5 (via Emergent LLM key) - ACTIVE
 - ✅ Google OAuth (via Emergent Auth) - ACTIVE
-- ⏸️ Twilio WhatsApp API - PLUG-AND-PLAY (add credentials)
-- ⏸️ SendGrid Email API - PLUG-AND-PLAY (add credentials)
-- ⏸️ Retell AI Voice API - PLUG-AND-PLAY (add credentials)
+- ✅ Retell AI Voice API - CONFIGURED (Note: UAE numbers not supported in account region)
+- ⏸️ Twilio WhatsApp API - PLUG-AND-PLAY (add credentials when ready)
+- ⏸️ SendGrid Email API - PLUG-AND-PLAY (add credentials when ready)
 
 ## Prioritized Backlog
 
