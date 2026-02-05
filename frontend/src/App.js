@@ -138,14 +138,16 @@ function AppContent() {
     return <AuthCallback />;
   }
 
-  // Public routes (login, signup)
-  const isPublicRoute = ['/login', '/signup'].includes(location.pathname);
+  // Public routes (login, signup, password reset)
+  const isPublicRoute = ['/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
   
   if (isPublicRoute) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     );
   }
