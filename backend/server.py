@@ -693,16 +693,29 @@ async def signup(user_data: UserCreate):
 @auth_router.post("/login")
 async def login(credentials: UserLogin):
     """Login with email/password"""
+    logging.info(f"Login attempt for: {credentials.email}")
+    
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user_doc:
+        logging.warning(f"Login failed: User not found - {credentials.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Check if user has password (OAuth users don't)
+    if not user_doc.get("password_hash"):
+        logging.warning(f"Login failed: OAuth-only user tried password login - {credentials.email}")
+        raise HTTPException(
+            status_code=401, 
+            detail="This account uses Google Sign-In. Please use the 'Continue with Google' button."
+        )
+    
     if not verify_password(credentials.password, user_doc.get("password_hash", "")):
+        logging.warning(f"Login failed: Invalid password - {credentials.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_jwt_token(user_doc["user_id"], user_doc["email"])
     
     await log_activity("user_login", "user", user_doc["user_id"], {"method": "password"})
+    logging.info(f"Login successful: {credentials.email}")
     
     # Remove password hash from response
     user_doc.pop("password_hash", None)
