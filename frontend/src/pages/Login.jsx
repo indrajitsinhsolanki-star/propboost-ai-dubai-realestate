@@ -133,6 +133,11 @@ export default function Login() {
               Sign up
             </Link>
           </p>
+          <p className="text-center text-sm">
+            <Link to="/forgot-password" className="text-gray-500 hover:text-[#D4AF37] hover:underline">
+              Forgot your password?
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
