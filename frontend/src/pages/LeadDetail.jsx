@@ -267,24 +267,38 @@ export default function LeadDetail() {
                     )}
                   </div>
                 </div>
-                <Button
-                  onClick={handleTriggerMayaCall}
-                  disabled={triggeringCall}
-                  data-testid="trigger-maya-call-btn"
-                  className="bg-purple-600 hover:bg-purple-700 rounded-full"
-                >
-                  {triggeringCall ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <PhoneCall className="w-4 h-4 mr-2" />
+                <div className="flex gap-2">
+                  {lead.maya_recording_url && (
+                    <a 
+                      href={lead.maya_recording_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-600 rounded-full text-sm hover:bg-purple-50"
+                      data-testid="maya-recording-link"
+                    >
+                      <Play className="w-4 h-4" /> Listen to Recording
+                    </a>
                   )}
-                  {lead.maya_call_status ? "Retry Call" : "Trigger Maya Call"}
-                </Button>
+                  <Button
+                    onClick={handleTriggerMayaCall}
+                    disabled={triggeringCall}
+                    data-testid="trigger-maya-call-btn"
+                    className="bg-purple-600 hover:bg-purple-700 rounded-full"
+                  >
+                    {triggeringCall ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <PhoneCall className="w-4 h-4 mr-2" />
+                    )}
+                    {lead.maya_call_status ? "Retry Call" : "Trigger Maya Call"}
+                  </Button>
+                </div>
               </div>
-              {lead.maya_call_status === "simulated" && (
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  ⚠️ Simulated mode: Add RETELL_API_KEY to .env for real calls
-                </p>
+              {lead.maya_call_summary && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-xl">
+                  <h4 className="font-medium text-gray-700 mb-2">Call Summary</h4>
+                  <p className="text-sm text-gray-600">{lead.maya_call_summary}</p>
+                </div>
               )}
             </CardContent>
           </Card>
