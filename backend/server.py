@@ -1126,6 +1126,128 @@ async def voice_call_webhook(request: Request):
         logging.error(f"Voice webhook error: {e}")
         return {"status": "error", "message": str(e)}
 
+
+@api_router.get("/voice/stats")
+async def get_voice_stats(user: dict = Depends(require_auth)):
+    """Get Voice AI Maya statistics for dashboard"""
+    try:
+        # Total calls made
+        total_calls = await db.leads.count_documents({"maya_call_id": {"$exists": True, "$ne": ""}})
+        
+        # Calls by status
+        calls_initiated = await db.leads.count_documents({"maya_call_status": "initiated"})
+        calls_completed = await db.leads.count_documents({"maya_call_status": "completed"})
+        calls_failed = await db.leads.count_documents({"maya_call_status": "failed"})
+        
+        # Get call logs for more detailed stats
+        call_logs = await db.voice_call_logs.find({}, {"_id": 0}).to_list(1000)
+        
+        # Calculate answered vs not answered
+        calls_answered = len([c for c in call_logs if c.get("ended_reason") not in ["no-answer", "busy", "failed", "machine-detected"]])
+        calls_no_answer = len([c for c in call_logs if c.get("ended_reason") in ["no-answer", "busy"]])
+        
+        # Calculate average duration from completed calls
+        durations = [c.get("duration_seconds", 0) for c in call_logs if c.get("duration_seconds")]
+        avg_duration = sum(durations) / len(durations) if durations else 0
+        
+        # Qualification results (parse from summaries or ended_reason)
+        qualified_interested = 0
+        qualified_not_interested = 0
+        qualified_callback = 0
+        qualified_unknown = 0
+        
+        for log in call_logs:
+            summary = (log.get("summary") or "").lower()
+            ended_reason = (log.get("ended_reason") or "").lower()
+            
+            if "interested" in summary and "not interested" not in summary:
+                qualified_interested += 1
+            elif "not interested" in summary or "declined" in summary:
+                qualified_not_interested += 1
+            elif "callback" in summary or "call back" in summary or "busy" in ended_reason:
+                qualified_callback += 1
+            elif log.get("ended_reason"):
+                qualified_unknown += 1
+        
+        # Calculate qualification rate
+        total_qualified = qualified_interested + qualified_not_interested + qualified_callback
+        qualification_rate = round((qualified_interested / total_qualified * 100) if total_qualified > 0 else 0, 1)
+        
+        return {
+            "total_calls": total_calls,
+            "calls_initiated": calls_initiated,
+            "calls_completed": calls_completed,
+            "calls_answered": calls_answered,
+            "calls_no_answer": calls_no_answer,
+            "calls_failed": calls_failed,
+            "avg_duration_seconds": round(avg_duration, 1),
+            "qualified_interested": qualified_interested,
+            "qualified_not_interested": qualified_not_interested,
+            "qualified_callback": qualified_callback,
+            "qualified_unknown": qualified_unknown,
+            "qualification_rate": qualification_rate
+        }
+    except Exception as e:
+        logging.error(f"Error getting voice stats: {e}")
+        return {
+            "total_calls": 0,
+            "calls_answered": 0,
+            "calls_no_answer": 0,
+            "calls_failed": 0,
+            "avg_duration_seconds": 0,
+            "qualification_rate": 0,
+            "qualified_interested": 0,
+            "qualified_not_interested": 0,
+            "qualified_callback": 0,
+            "qualified_unknown": 0
+        }
+
+@api_router.get("/voice/call-logs")
+async def get_voice_call_logs(limit: int = 20, user: dict = Depends(require_auth)):
+    """Get recent voice call logs with lead details"""
+    try:
+        logs = await db.voice_call_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+        
+        # Enrich with lead data
+        enriched_logs = []
+        for log in logs:
+            lead_id = log.get("lead_id")
+            if lead_id:
+                lead = await db.leads.find_one({"id": lead_id}, {"_id": 0, "name": 1, "phone": 1})
+                if lead:
+                    log["lead_name"] = lead.get("name", "Unknown")
+                    log["lead_phone"] = lead.get("phone", "")
+            
+            # Parse qualification result from summary
+            summary = (log.get("summary") or "").lower()
+            if "interested" in summary and "not interested" not in summary:
+                log["qualification_result"] = "interested"
+            elif "not interested" in summary:
+                log["qualification_result"] = "not_interested"
+            elif "callback" in summary or "call back" in summary:
+                log["qualification_result"] = "callback"
+            else:
+                log["qualification_result"] = "unknown"
+            
+            # Determine status from ended_reason
+            ended_reason = log.get("ended_reason", "")
+            if ended_reason in ["customer-ended-call", "agent-ended-call", "assistant-ended-call"]:
+                log["status"] = "completed"
+            elif ended_reason in ["no-answer", "busy"]:
+                log["status"] = "no-answer"
+            elif ended_reason in ["failed", "error"]:
+                log["status"] = "failed"
+            else:
+                log["status"] = "completed" if log.get("transcript") else "unknown"
+            
+            enriched_logs.append(log)
+        
+        return enriched_logs
+    except Exception as e:
+        logging.error(f"Error getting call logs: {e}")
+        return []
+
+
 # ==================== PROPERTY ENDPOINTS ====================
 
 @api_router.post("/properties", response_model=Property)
