@@ -42,8 +42,11 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - ✅ Lead Leaderboard Analytics module
 - ✅ New lead fields: lead_source, estimated_deal_value
 - ✅ Conversion rate and revenue tracking by source
-- ✅ Voice AI "Maya" integration (Retell AI - PLUG-AND-PLAY)
+- ✅ Voice AI "Maya" integration (Vapi.ai with Twilio carrier)
 - ✅ Auto-trigger Maya calls for hot leads (score > 7)
+- ✅ Voice AI Dashboard (Total Calls, Answered, Qualification Rate, Avg Talk Time)
+- ✅ Call recording links in lead detail and dashboard
+- ✅ Password Reset Flow (Forgot Password + Reset Password pages)
 - ✅ Twilio WhatsApp integration (PLUG-AND-PLAY)
 - ✅ SendGrid Email integration (PLUG-AND-PLAY)
 - ✅ RERA/DLD compliance validation (blocks investment guarantees)
