@@ -578,67 +578,74 @@ async def send_sendgrid_email(to_email: str, subject: str, body: str) -> dict:
         logging.error(f"SendGrid email error: {e}")
         return {"status": "failed", "message_id": "", "message": str(e)}
 
-# ==================== VOICE AI (RETELL) SERVICE ====================
+# ==================== VOICE AI (VAPI) SERVICE ====================
 
 async def trigger_maya_call(lead: dict, language: str = "English") -> dict:
-    """Trigger Maya voice AI call via Retell AI (plug-and-play)"""
-    api_key = os.environ.get('RETELL_API_KEY')
-    agent_id = os.environ.get('RETELL_AGENT_ID')
-    from_number = os.environ.get('RETELL_FROM_NUMBER')
+    """Trigger Maya voice AI call via Vapi AI"""
+    api_key = os.environ.get('VAPI_API_KEY')
+    assistant_id = os.environ.get('VAPI_ASSISTANT_ID')
+    phone_number_id = os.environ.get('VAPI_PHONE_NUMBER_ID')
     
-    if not all([api_key, agent_id, from_number]):
+    if not all([api_key, assistant_id, phone_number_id]):
         return {
             "status": "simulated",
             "call_id": f"SIM_CALL_{uuid.uuid4().hex[:12]}",
-            "message": "Retell AI credentials not configured. Call simulated."
+            "message": "Vapi AI credentials not configured. Call simulated."
         }
     
     # Determine language code
-    lang_code = "ar" if language.lower() == "arabic" else "en"
+    lang_code = "ar" if language.lower() == "arabic" else "hi" if language.lower() == "hindi" else "en"
     
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.retellai.com/v2/create-phone-call",
+                "https://api.vapi.ai/call",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "from_number": from_number,
-                    "to_number": lead.get("phone", ""),
-                    "override_agent_id": agent_id,
-                    "retell_llm_dynamic_variables": {
-                        "customer_name": lead.get("name", ""),
-                        "language": lang_code,
-                        "budget_range": lead.get("property_interests", {}).get("budget", ""),
-                        "location_preference": lead.get("property_interests", {}).get("location", "")
+                    "assistantId": assistant_id,
+                    "phoneNumberId": phone_number_id,
+                    "customer": {
+                        "number": lead.get("phone", ""),
+                        "name": lead.get("name", "Customer")
+                    },
+                    "assistantOverrides": {
+                        "variableValues": {
+                            "customer_name": lead.get("name", ""),
+                            "language": lang_code,
+                            "budget_range": lead.get("property_interests", {}).get("budget", ""),
+                            "location_preference": lead.get("property_interests", {}).get("location", "")
+                        }
                     },
                     "metadata": {
                         "lead_id": lead.get("id", ""),
                         "lead_name": lead.get("name", ""),
                         "language": language
                     }
-                }
+                },
+                timeout=30.0
             )
             result = response.json()
             
-            # Handle Retell API errors
-            if result.get("status") == "error":
-                logging.warning(f"Retell API error: {result.get('message')}")
+            # Handle Vapi API errors
+            if response.status_code >= 400 or result.get("error"):
+                error_msg = result.get("message") or result.get("error") or f"HTTP {response.status_code}"
+                logging.warning(f"Vapi API error: {error_msg}")
                 return {
                     "status": "failed",
                     "call_id": "",
-                    "message": f"Retell error: {result.get('message', 'Unknown error')}"
+                    "message": f"Vapi error: {error_msg}"
                 }
             
             return {
                 "status": "initiated",
-                "call_id": result.get("call_id", ""),
-                "message": "Maya call initiated successfully"
+                "call_id": result.get("id", ""),
+                "message": "Maya call initiated successfully via Vapi"
             }
     except Exception as e:
-        logging.error(f"Retell AI call error: {e}")
+        logging.error(f"Vapi AI call error: {e}")
         return {"status": "failed", "call_id": "", "message": str(e)}
 
 # ==================== ACTIVITY LOGGING ====================
