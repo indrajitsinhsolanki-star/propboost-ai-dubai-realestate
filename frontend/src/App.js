@@ -92,6 +92,11 @@ const createApi = (token) => {
     getScoreDistribution: () => axios.get(`${API}/analytics/score-distribution`, { headers }),
     getSourcePerformance: () => axios.get(`${API}/analytics/source-performance`, { headers }),
     
+    // Voice AI
+    triggerVoiceCall: (leadId, language) => axios.post(`${API}/voice/trigger-call`, { lead_id: leadId, language }, { headers }),
+    getVoiceStats: () => axios.get(`${API}/voice/stats`, { headers }),
+    getVoiceCallLogs: (limit) => axios.get(`${API}/voice/call-logs?limit=${limit || 20}`, { headers }),
+    
     // Activity Logs
     getActivityLogs: (limit) => axios.get(`${API}/activity-logs?limit=${limit || 50}`, { headers }),
     getComplianceAudits: (limit) => axios.get(`${API}/compliance-audits?limit=${limit || 50}`, { headers }),
