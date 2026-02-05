@@ -245,7 +245,15 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
+    """Verify password against hash. Returns False if hash is empty/invalid."""
+    if not hashed or len(hashed) < 10:
+        # No password hash means OAuth-only user, can't login with password
+        return False
+    try:
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+    except (ValueError, TypeError) as e:
+        logging.error(f"Password verification error: {e}")
+        return False
 
 def create_jwt_token(user_id: str, email: str) -> str:
     payload = {
