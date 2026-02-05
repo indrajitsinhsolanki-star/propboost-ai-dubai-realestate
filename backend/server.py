@@ -896,7 +896,7 @@ async def root():
     return {"message": "PropBoost AI API", "version": "2.0.0"}
 
 @api_router.post("/leads", response_model=Lead)
-async def create_lead(lead_input: LeadCreate, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
+async def create_lead(lead_input: LeadCreate, user: dict = Depends(require_auth)):
     """Create a new lead and score with AI"""
     lead = Lead(**lead_input.model_dump())
     
@@ -917,16 +917,17 @@ async def create_lead(lead_input: LeadCreate, background_tasks: BackgroundTasks,
         lead.stage = "new"
         lead.probability = 10
     
+    # Trigger Maya call for hot leads (score > 7) BEFORE saving
+    if lead.score > 7:
+        logging.info(f"Hot lead detected (score={lead.score}), triggering Maya call for {lead.name}")
+        maya_result = await trigger_maya_call(lead.model_dump(), lead.language_preference)
+        lead.maya_call_status = maya_result["status"]
+        lead.maya_call_id = maya_result["call_id"]
+        logging.info(f"Maya call result: {maya_result}")
+        await log_activity("maya_call_triggered", "lead", lead.id, maya_result, user.get("user_id", ""))
+    
     doc = lead.model_dump()
     await db.leads.insert_one(doc)
-    
-    # Trigger Maya call for hot leads (score > 7)
-    if lead.score > 7:
-        background_tasks.add_task(
-            trigger_maya_call_background,
-            lead.model_dump(),
-            lead.language_preference
-        )
     
     await log_activity("lead_created", "lead", lead.id, {"score": lead.score}, user.get("user_id", ""))
     
