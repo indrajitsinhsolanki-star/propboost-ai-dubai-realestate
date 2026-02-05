@@ -934,20 +934,8 @@ async def create_lead(lead_input: LeadCreate, user: dict = Depends(require_auth)
     return lead
 
 async def trigger_maya_call_background(lead_data: dict, language: str):
-    """Background task to trigger Maya voice AI call"""
-    try:
-        result = await trigger_maya_call(lead_data, language)
-        if result["status"] in ["initiated", "simulated"]:
-            await db.leads.update_one(
-                {"id": lead_data["id"]},
-                {"$set": {
-                    "maya_call_status": result["status"],
-                    "maya_call_id": result["call_id"]
-                }}
-            )
-            await log_activity("maya_call_triggered", "lead", lead_data["id"], result)
-    except Exception as e:
-        logging.error(f"Maya call background task error: {e}")
+    """Background task to trigger Maya voice AI call (deprecated - now inline)"""
+    pass
 
 @api_router.get("/leads", response_model=List[Lead])
 async def get_leads(
