@@ -661,9 +661,12 @@ async def create_compliance_audit(content_id: str, content_type: str, content: s
 @auth_router.post("/signup")
 async def signup(user_data: UserCreate):
     """Register a new user"""
+    logging.info(f"Signup attempt for: {user_data.email}")
+    
     # Check if user exists
     existing = await db.users.find_one({"email": user_data.email})
     if existing:
+        logging.warning(f"Signup failed: Email already exists - {user_data.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
     
     # Create user
@@ -677,7 +680,13 @@ async def signup(user_data: UserCreate):
     # Store with hashed password
     user_doc = user.model_dump()
     user_doc["password_hash"] = hash_password(user_data.password)
-    await db.users.insert_one(user_doc)
+    
+    try:
+        await db.users.insert_one(user_doc)
+        logging.info(f"User created successfully: {user_data.email}")
+    except Exception as e:
+        logging.error(f"Database error during signup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create account")
     
     # Generate JWT token
     token = create_jwt_token(user.user_id, user.email)
