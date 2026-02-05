@@ -1061,49 +1061,65 @@ async def trigger_voice_call(request: VoiceCallRequest, user: dict = Depends(req
 
 @api_router.post("/voice/webhook")
 async def voice_call_webhook(request: Request):
-    """Handle Retell AI webhook events"""
+    """Handle Vapi AI webhook events"""
     try:
-        body = await request.body()
         payload = await request.json()
         
-        event_type = payload.get("event", "")
-        call_data = payload.get("call", {})
+        # Vapi sends different event types
+        message = payload.get("message", {})
+        event_type = message.get("type", "")
+        call_data = message.get("call", {}) or payload.get("call", {})
         lead_id = call_data.get("metadata", {}).get("lead_id", "")
         
-        if event_type == "call_ended" and lead_id:
-            # Update lead with call results
-            transcript = call_data.get("transcript", "")
-            analysis = call_data.get("call_analysis", {})
+        logging.info(f"Vapi webhook received: {event_type}")
+        
+        if event_type == "end-of-call-report" and lead_id:
+            # Extract call results
+            artifact = message.get("artifact", {})
+            transcript = artifact.get("transcript", "")
+            recording_url = artifact.get("recordingUrl", "")
+            duration_seconds = call_data.get("endedAt") and call_data.get("startedAt")
+            ended_reason = message.get("endedReason", "")
             
             update_data = {
                 "maya_call_status": "completed",
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Extract qualification data from analysis
-            if analysis.get("budget"):
-                if "property_interests" not in update_data:
-                    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
-                    update_data["property_interests"] = lead.get("property_interests", {})
-                update_data["property_interests"]["budget"] = analysis.get("budget")
+            # Extract any qualification data from the call summary
+            summary = artifact.get("summary", "")
+            if summary:
+                update_data["maya_call_summary"] = summary
             
             await db.leads.update_one({"id": lead_id}, {"$set": update_data})
             
-            # Log call transcript
+            # Log call details
             await db.voice_call_logs.insert_one({
                 "id": str(uuid.uuid4()),
                 "lead_id": lead_id,
-                "call_id": call_data.get("call_id", ""),
+                "call_id": call_data.get("id", ""),
                 "transcript": transcript,
-                "analysis": analysis,
-                "duration": call_data.get("duration", 0),
+                "summary": summary,
+                "recording_url": recording_url,
+                "ended_reason": ended_reason,
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
             
             await log_activity("maya_call_completed", "lead", lead_id, {
-                "call_id": call_data.get("call_id"),
-                "duration": call_data.get("duration")
+                "call_id": call_data.get("id"),
+                "ended_reason": ended_reason
             })
+            
+            logging.info(f"Call completed for lead {lead_id}: {ended_reason}")
+        
+        elif event_type == "status-update":
+            status = message.get("status", "")
+            if lead_id and status:
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"maya_call_status": status}}
+                )
+                logging.info(f"Call status update for lead {lead_id}: {status}")
         
         return {"status": "received"}
     except Exception as e:
