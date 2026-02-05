@@ -27,7 +27,8 @@ import {
   PhoneCall,
   PhoneOff,
   PhoneForwarded,
-  Mic
+  Mic,
+  Play
 } from "lucide-react";
 
 export default function LeadDetail() {
