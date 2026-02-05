@@ -11,8 +11,11 @@ import ContentStudio from "./pages/ContentStudio";
 import Pipeline from "./pages/Pipeline";
 import LeadDetail from "./pages/LeadDetail";
 import Analytics from "./pages/Analytics";
+import VoiceAIDashboard from "./pages/VoiceAIDashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import AuthCallback from "./pages/AuthCallback";
 
 // Components
