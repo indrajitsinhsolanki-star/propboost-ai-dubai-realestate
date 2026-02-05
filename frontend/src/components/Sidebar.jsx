@@ -8,7 +8,8 @@ import {
   Settings,
   LogOut,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Mic
 } from "lucide-react";
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { path: "/content", icon: FileText, label: "Content Studio" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
+  { path: "/voice-ai", icon: Mic, label: "Voice AI" },
 ];
 
 export default function Sidebar({ currentPath }) {
