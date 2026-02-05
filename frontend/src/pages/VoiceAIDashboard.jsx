@@ -155,7 +155,7 @@ export default function VoiceAIDashboard() {
                   {stats?.calls_answered || 0}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {stats?.total_calls &gt; 0 ? Math.round((stats.calls_answered / stats.total_calls) * 100) : 0}% answer rate
+                  {stats?.total_calls > 0 ? Math.round((stats.calls_answered / stats.total_calls) * 100) : 0}% answer rate
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
