@@ -227,10 +227,18 @@ function AuthProvider({ children }) {
   const login = async (email, password) => {
     const response = await apiWithAuth.login({ email, password });
     const { user: userData, token: newToken } = response.data;
+    
+    // Store token first
     localStorage.setItem('propboost_token', newToken);
+    
+    // Update state synchronously to prevent race conditions
     setToken(newToken);
     setUser(userData);
-    return userData;
+    
+    // Return a promise that resolves after state is updated
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(userData), 100);
+    });
   };
 
   const signup = async (data) => {
