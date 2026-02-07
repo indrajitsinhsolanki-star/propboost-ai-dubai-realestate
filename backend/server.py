@@ -107,10 +107,14 @@ class Lead(BaseModel):
     probability: int = 0
     ai_briefing: str = ""
     interactions: List[Dict[str, Any]] = []
-    lead_source: str = "Walk-in"  # NEW
-    estimated_deal_value: float = 0  # NEW
-    maya_call_status: str = ""  # NEW: Voice AI call status
-    maya_call_id: str = ""  # NEW: Retell AI call ID
+    lead_source: str = "Walk-in"
+    estimated_deal_value: float = 0
+    maya_call_status: str = ""
+    maya_call_id: str = ""
+    maya_call_summary: str = ""  # BANT summary from Maya
+    maya_recording_url: str = ""  # Recording URL
+    maya_bant: Dict[str, Any] = {}  # BANT qualification data
+    maya_confidence_score: int = 0  # AI confidence percentage
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
