@@ -129,7 +129,7 @@ export default function VoiceAIDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="bg-white border border-gray-100 shadow-sm" data-testid="total-calls-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -150,12 +150,12 @@ export default function VoiceAIDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Calls Answered</p>
+                <p className="text-sm text-gray-500">Answered</p>
                 <p className="text-3xl font-bold text-green-600" style={{ fontFamily: 'Playfair Display, serif' }}>
                   {stats?.calls_answered || 0}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {stats?.total_calls > 0 ? Math.round((stats.calls_answered / stats.total_calls) * 100) : 0}% answer rate
+                  {stats?.total_calls > 0 ? Math.round((stats.calls_answered / stats.total_calls) * 100) : 0}% rate
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
@@ -169,12 +169,12 @@ export default function VoiceAIDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Qualification Rate</p>
+                <p className="text-sm text-gray-500">Qualified</p>
                 <p className="text-3xl font-bold text-[#D4AF37]" style={{ fontFamily: 'Playfair Display, serif' }}>
                   {stats?.qualification_rate || 0}%
                 </p>
                 <p className="text-xs text-gray-400">
-                  {stats?.qualified_interested || 0} interested leads
+                  {stats?.qualified_interested || 0} interested
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-yellow-100 flex items-center justify-center">
@@ -184,16 +184,35 @@ export default function VoiceAIDashboard() {
           </CardContent>
         </Card>
 
+        <Card className="bg-white border border-gray-100 shadow-sm" data-testid="avg-confidence-card">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">AI Confidence</p>
+                <p className="text-3xl font-bold text-indigo-600" style={{ fontFamily: 'Playfair Display, serif' }}>
+                  {stats?.avg_confidence || 0}%
+                </p>
+                <p className="text-xs text-gray-400">
+                  avg per call
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-white border border-gray-100 shadow-sm" data-testid="avg-talk-time-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Avg Talk Time</p>
+                <p className="text-sm text-gray-500">Talk Time</p>
                 <p className="text-3xl font-bold text-blue-600" style={{ fontFamily: 'Playfair Display, serif' }}>
                   {formatDuration(stats?.avg_duration_seconds)}
                 </p>
                 <p className="text-xs text-gray-400">
-                  per answered call
+                  avg per call
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
