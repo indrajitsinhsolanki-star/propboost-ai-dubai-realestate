@@ -124,7 +124,7 @@ function ProtectedRoute({ children }) {
 
 function AppContent() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -141,7 +141,22 @@ function AppContent() {
   // Public routes (login, signup, password reset)
   const isPublicRoute = ['/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
   
+  // Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-[#D4AF37] border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+  
+  // Handle public routes
   if (isPublicRoute) {
+    // If user is already logged in, redirect to dashboard
+    if (user) {
+      return <Navigate to="/" replace />;
+    }
+    
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
