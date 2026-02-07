@@ -37,6 +37,18 @@ Based on our research with local brokers (e.g., Revest, Phoenix Homes):
 
 ---
 
+## 🎯 BANT Extraction Logic (The "Intelligence" Layer)
+Our system uses a custom-tuned GPT-4o model to extract structured data with high precision. Here is how we define our qualification criteria:
+
+| Category | Technical Extraction Logic | Output Format |
+| :--- | :--- | :--- |
+| **Budget** | Identifies currency (AED/USD) and normalizes to Numeric AED. | `Integer (e.g., 5000000)` |
+| **Authority** | Analyzes intent to distinguish between "Buyer," "Agent," or "Renter." | `Enum (Buyer / Agent)` |
+| **Need** | Maps natural language to unit types and Dubai master communities. | `String (e.g., 3BR Villa, Dubai Hills)` |
+| **Timeline** | Categorizes urgency based on "Time-to-Purchase" keywords. | `Scale (Hot <30d / Warm <90d / Cold)` |
+
+> **Confidence Scoring:** Every lead is assigned a score (0-100%). If the lead provides conflicting info (e.g., "I want a penthouse but my budget is 1 million"), the system triggers a 'Low Confidence' flag for manual broker review.
+
 ## 🚀 Future Roadmap
 - [ ] WhatsApp Business API Integration
 - [ ] Direct Sync with Property Finder & Bayut APIs
@@ -44,8 +56,13 @@ Based on our research with local brokers (e.g., Revest, Phoenix Homes):
 
 ---
 
-## 🛠️ How to Run
-1. Clone the repo: `git clone [Your Repo Link]`
-2. Install dependencies: `npm install`
-3. Add your `.env` variables (VAPI_KEY, TWILIO_SID)
-4. Start the engine: `npm run dev`
+## 🛠️ 👨‍⚖️ How to Run / Judge's Quick Start
+To see the **"Wow Factor"** in real-time:
+1. **Live Demo:** https://propboost-ai.preview.emergentagent.com/
+2. **The Test:** Add a lead with your phone number. 
+3. **The AI Interaction:** When Maya calls, give her a complex answer (e.g., *"I'm looking for a villa in Marina but I only have 2 million dirhams"*). 
+4. **The Result:** Check the dashboard 10 seconds later. You will see Maya flagged the **Budget/Location mismatch** in the summary notes!
+5.Technical Note for Judges: > We are currently resolving a session-sync issue with our cloud provider. If you experience a login loop:
+Please use the Chrome Incognito window. Use the Admin Credentials provided: indrajitsinh.solanki@gmail.com / PropBoost123!.
+If the loop persists, simply refresh the page once after your first login attempt; the session will stabilize.
+
