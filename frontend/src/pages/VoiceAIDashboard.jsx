@@ -336,6 +336,19 @@ export default function VoiceAIDashboard() {
                         {formatDuration(log.duration_seconds)}
                       </td>
                       <td className="py-3 px-2">
+                        {log.confidence_score > 0 ? (
+                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                            log.confidence_score >= 70 ? 'bg-green-100 text-green-700' :
+                            log.confidence_score >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {log.confidence_score}%
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2">
                         <Badge 
                           variant="outline" 
                           className={`text-xs ${
