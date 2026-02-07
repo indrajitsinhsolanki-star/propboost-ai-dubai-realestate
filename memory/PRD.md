@@ -67,23 +67,16 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 
 ## Prioritized Backlog
 
-### P0 - Critical (Next Sprint)
-- Property portal API sync (Property Finder, Bayut)
+### Future Roadmap (Backlog)
+- WhatsApp Business Integration (Pending API approval from Meta)
+- SendGrid Email Automation (For password reset emails)
+- Property Portal API Sync (Property Finder, Bayut APIs)
 - Social media auto-publishing (Meta Business API)
-- Automated follow-up sequences
-
-### P1 - High Priority
 - Team collaboration features
 - Advanced reporting dashboard
 - Multi-tenant architecture
 - Real-time notifications
-
-### P2 - Medium Priority
-- Predictive deal analytics with ML
-- CRM integrations (Salesforce, HubSpot)
-- Payment processing for subscriptions
 - Mobile app (React Native)
-- Arabic RTL full support
 
 ## Technical Architecture
 - **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts
@@ -91,7 +84,7 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - **AI**: Claude Sonnet 4.5 via emergentintegrations
 - **Auth**: JWT + Emergent Google OAuth
 - **Database**: MongoDB
-- **Voice AI**: Retell AI (plug-and-play)
+- **Voice AI**: Vapi.ai + Twilio carrier (LIVE)
 - **Messaging**: Twilio WhatsApp, SendGrid Email (plug-and-play)
 - **Fonts**: Playfair Display (headings), Outfit (body), Tajawal (Arabic)
 
