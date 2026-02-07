@@ -1,4 +1,4 @@
-# 🚀 PropBoost AI - Killing the 60% Admin Tax in Dubai Real Estate
+# 🚀 PropBoost AI - Killing the 50-60% Admin Time in Dubai Real Estate
 
 **PropBoost AI** is an "Active AI" employee designed to help Dubai brokers move away from passive CRMs. We automate the hardest part of the job: **Instant Lead Qualification.**
 
@@ -23,7 +23,7 @@
 
 ## 📊 Market Insight (The "Why")
 Based on our research with local brokers (e.g., Revest, Phoenix Homes):
-- **The Problem:** Agents spend **60% of their day on admin**.
+- **The Problem:** Agents spend **50-60% of their day on admin**.
 - **The Gap:** Legacy CRMs (PF Expert, Bayut) are "passive"—they require manual data entry.
 - **Our Solution:** PropBoost is "active"—Maya qualifies the lead while you sleep and populates the CRM automatically.
 
