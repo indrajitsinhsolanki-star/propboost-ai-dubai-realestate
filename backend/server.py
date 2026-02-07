@@ -1294,6 +1294,10 @@ async def get_voice_stats(user: dict = Depends(require_auth)):
         total_qualified = qualified_interested + qualified_not_interested + qualified_callback
         qualification_rate = round((qualified_interested / total_qualified * 100) if total_qualified > 0 else 0, 1)
         
+        # Calculate average confidence score
+        confidence_scores = [c.get("confidence_score", 0) for c in call_logs if c.get("confidence_score")]
+        avg_confidence = round(sum(confidence_scores) / len(confidence_scores)) if confidence_scores else 0
+        
         return {
             "total_calls": total_calls,
             "calls_initiated": calls_initiated,
@@ -1302,6 +1306,7 @@ async def get_voice_stats(user: dict = Depends(require_auth)):
             "calls_no_answer": calls_no_answer,
             "calls_failed": calls_failed,
             "avg_duration_seconds": round(avg_duration, 1),
+            "avg_confidence": avg_confidence,
             "qualified_interested": qualified_interested,
             "qualified_not_interested": qualified_not_interested,
             "qualified_callback": qualified_callback,
@@ -1316,6 +1321,7 @@ async def get_voice_stats(user: dict = Depends(require_auth)):
             "calls_no_answer": 0,
             "calls_failed": 0,
             "avg_duration_seconds": 0,
+            "avg_confidence": 0,
             "qualification_rate": 0,
             "qualified_interested": 0,
             "qualified_not_interested": 0,
