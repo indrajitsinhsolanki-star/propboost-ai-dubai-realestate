@@ -244,12 +244,26 @@ export default function LeadDetail() {
           {/* Voice AI Maya Status Card */}
           <Card className="bg-white border border-gray-100 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-                <Mic className="w-5 h-5 text-purple-500" />
-                Voice AI "Maya" Activity
+              <CardTitle className="flex items-center justify-between" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <div className="flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-purple-500" />
+                  Voice AI &quot;Maya&quot; Activity
+                </div>
+                {lead.maya_confidence_score > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">AI Confidence:</span>
+                    <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      lead.maya_confidence_score >= 70 ? 'bg-green-100 text-green-700' :
+                      lead.maya_confidence_score >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {lead.maya_confidence_score}%
+                    </div>
+                  </div>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-purple-50 rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
@@ -295,10 +309,102 @@ export default function LeadDetail() {
                   </Button>
                 </div>
               </div>
-              {lead.maya_call_summary && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-xl">
-                  <h4 className="font-medium text-gray-700 mb-2">Call Summary</h4>
-                  <p className="text-sm text-gray-600">{lead.maya_call_summary}</p>
+
+              {/* BANT Summary Section */}
+              {(lead.maya_call_summary || lead.maya_bant) && (
+                <div className="space-y-4">
+                  {/* Call Summary */}
+                  {lead.maya_call_summary && (
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                      <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Call Summary
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">{lead.maya_call_summary}</p>
+                    </div>
+                  )}
+
+                  {/* BANT Qualification Grid */}
+                  {lead.maya_bant && Object.keys(lead.maya_bant).length > 0 && (
+                    <div className="p-4 bg-white border border-gray-200 rounded-xl">
+                      <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <Target className="w-4 h-4 text-[#D4AF37]" />
+                        BANT Qualification
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {/* Budget */}
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <div className="flex items-center gap-1 text-green-700 mb-1">
+                            <DollarSign className="w-3 h-3" />
+                            <span className="text-xs font-medium">Budget</span>
+                          </div>
+                          <p className="text-sm font-semibold text-green-800">
+                            {lead.maya_bant.budget || "Not confirmed"}
+                          </p>
+                        </div>
+                        
+                        {/* Authority */}
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <div className="flex items-center gap-1 text-blue-700 mb-1">
+                            <Users className="w-3 h-3" />
+                            <span className="text-xs font-medium">Authority</span>
+                          </div>
+                          <p className="text-sm font-semibold text-blue-800 capitalize">
+                            {lead.maya_bant.authority || "Unknown"}
+                          </p>
+                        </div>
+                        
+                        {/* Need */}
+                        <div className="p-3 bg-orange-50 rounded-lg">
+                          <div className="flex items-center gap-1 text-orange-700 mb-1">
+                            <Home className="w-3 h-3" />
+                            <span className="text-xs font-medium">Need</span>
+                          </div>
+                          <p className="text-sm font-semibold text-orange-800 truncate">
+                            {lead.maya_bant.need || lead.maya_bant.property_type || "Not specified"}
+                          </p>
+                        </div>
+                        
+                        {/* Timeline */}
+                        <div className="p-3 bg-purple-50 rounded-lg">
+                          <div className="flex items-center gap-1 text-purple-700 mb-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-xs font-medium">Timeline</span>
+                          </div>
+                          <p className="text-sm font-semibold text-purple-800">
+                            {lead.maya_bant.timeline || "Not confirmed"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Interest Level & Location */}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {lead.maya_bant.interest_level && (
+                          <Badge className={`${
+                            lead.maya_bant.interest_level === 'high' ? 'bg-green-500' :
+                            lead.maya_bant.interest_level === 'medium' ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`}>
+                            Interest: {lead.maya_bant.interest_level}
+                          </Badge>
+                        )}
+                        {lead.maya_bant.location && (
+                          <Badge variant="outline" className="border-[#D4AF37] text-[#D4AF37]">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {lead.maya_bant.location}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Next Steps */}
+                      {lead.maya_bant.next_steps && (
+                        <div className="mt-3 p-3 bg-[#001F3F]/5 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-1">Next Steps</p>
+                          <p className="text-sm text-[#001F3F] font-medium">{lead.maya_bant.next_steps}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
