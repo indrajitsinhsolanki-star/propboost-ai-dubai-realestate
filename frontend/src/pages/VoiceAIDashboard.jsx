@@ -311,6 +311,7 @@ export default function VoiceAIDashboard() {
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Lead</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Status</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Duration</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Confidence</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Outcome</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Recording</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Date</th>
