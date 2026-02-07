@@ -1082,18 +1082,44 @@ async def voice_call_webhook(request: Request):
             artifact = message.get("artifact", {})
             transcript = artifact.get("transcript", "")
             recording_url = artifact.get("recordingUrl", "")
-            duration_seconds = call_data.get("endedAt") and call_data.get("startedAt")
             ended_reason = message.get("endedReason", "")
+            summary = artifact.get("summary", "")
+            
+            # Calculate call duration
+            duration_seconds = 0
+            if call_data.get("startedAt") and call_data.get("endedAt"):
+                try:
+                    start = datetime.fromisoformat(call_data["startedAt"].replace("Z", "+00:00"))
+                    end = datetime.fromisoformat(call_data["endedAt"].replace("Z", "+00:00"))
+                    duration_seconds = (end - start).total_seconds()
+                except:
+                    pass
+            
+            # Parse BANT data from transcript/summary using AI
+            bant_data = await extract_bant_from_call(transcript, summary)
+            
+            # Calculate confidence score based on confirmed data points
+            confidence_score = calculate_confidence_score(bant_data, ended_reason, duration_seconds)
             
             update_data = {
                 "maya_call_status": "completed",
+                "maya_call_summary": summary,
+                "maya_recording_url": recording_url,
+                "maya_bant": bant_data,
+                "maya_confidence_score": confidence_score,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Extract any qualification data from the call summary
-            summary = artifact.get("summary", "")
-            if summary:
-                update_data["maya_call_summary"] = summary
+            # Update property interests with BANT data if available
+            if bant_data.get("budget"):
+                lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+                if lead:
+                    interests = lead.get("property_interests", {})
+                    if bant_data.get("budget"):
+                        interests["budget"] = bant_data["budget"]
+                    if bant_data.get("location"):
+                        interests["location"] = bant_data["location"]
+                    update_data["property_interests"] = interests
             
             await db.leads.update_one({"id": lead_id}, {"$set": update_data})
             
@@ -1106,15 +1132,19 @@ async def voice_call_webhook(request: Request):
                 "summary": summary,
                 "recording_url": recording_url,
                 "ended_reason": ended_reason,
+                "duration_seconds": duration_seconds,
+                "bant_data": bant_data,
+                "confidence_score": confidence_score,
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
             
             await log_activity("maya_call_completed", "lead", lead_id, {
                 "call_id": call_data.get("id"),
-                "ended_reason": ended_reason
+                "ended_reason": ended_reason,
+                "confidence_score": confidence_score
             })
             
-            logging.info(f"Call completed for lead {lead_id}: {ended_reason}")
+            logging.info(f"Call completed for lead {lead_id}: {ended_reason}, confidence: {confidence_score}%")
         
         elif event_type == "status-update":
             status = message.get("status", "")
@@ -1129,6 +1159,93 @@ async def voice_call_webhook(request: Request):
     except Exception as e:
         logging.error(f"Voice webhook error: {e}")
         return {"status": "error", "message": str(e)}
+
+async def extract_bant_from_call(transcript: str, summary: str) -> dict:
+    """Extract BANT qualification data from call transcript using AI"""
+    if not transcript and not summary:
+        return {}
+    
+    try:
+        system_message = """You are a sales qualification analyst. Extract BANT data from this call.
+        Return JSON only with these fields:
+        {
+            "budget": "extracted budget range or null",
+            "authority": "decision maker status: yes/no/unknown",
+            "need": "property need description or null",
+            "timeline": "purchase timeline or null",
+            "location": "preferred location or null",
+            "property_type": "villa/apartment/penthouse or null",
+            "interest_level": "high/medium/low/unknown",
+            "next_steps": "agreed next steps or null",
+            "objections": "any objections raised or null"
+        }"""
+        
+        chat = await get_llm_chat(f"bant-extract-{uuid.uuid4()}", system_message)
+        prompt = f"""Extract BANT qualification data from this call:
+
+TRANSCRIPT:
+{transcript[:3000]}
+
+SUMMARY:
+{summary}
+
+Return valid JSON only."""
+        
+        message = UserMessage(text=prompt)
+        response = await chat.send_message(message)
+        
+        response_text = response.strip()
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+        
+        return json.loads(response_text)
+    except Exception as e:
+        logging.error(f"BANT extraction error: {e}")
+        return {}
+
+def calculate_confidence_score(bant_data: dict, ended_reason: str, duration_seconds: float) -> int:
+    """Calculate AI confidence score based on confirmed data points"""
+    score = 0
+    max_score = 100
+    
+    # Call completion quality (30 points)
+    if ended_reason in ["customer-ended-call", "agent-ended-call", "assistant-ended-call"]:
+        score += 20
+        if duration_seconds > 60:
+            score += 10  # Good conversation length
+    elif ended_reason == "voicemail":
+        score += 5
+    
+    # BANT data completeness (70 points)
+    if bant_data:
+        # Budget confirmed (20 points)
+        if bant_data.get("budget") and bant_data.get("budget") != "null":
+            score += 20
+        
+        # Authority confirmed (15 points)
+        if bant_data.get("authority") == "yes":
+            score += 15
+        elif bant_data.get("authority") == "unknown":
+            score += 5
+        
+        # Need identified (15 points)
+        if bant_data.get("need") and bant_data.get("need") != "null":
+            score += 15
+        
+        # Timeline confirmed (10 points)
+        if bant_data.get("timeline") and bant_data.get("timeline") != "null":
+            score += 10
+        
+        # Interest level (10 points)
+        interest = bant_data.get("interest_level", "").lower()
+        if interest == "high":
+            score += 10
+        elif interest == "medium":
+            score += 5
+    
+    return min(score, max_score)
 
 
 @api_router.get("/voice/stats")
