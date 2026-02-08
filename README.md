@@ -66,6 +66,18 @@ Our system uses a custom-tuned GPT-4o model to extract structured data with high
 | **Timeline** | Categorizes urgency based on "Time-to-Purchase" keywords. | `Scale (Hot <30d / Warm <90d / Cold)` |
 
 > **Confidence Scoring:** Every lead is assigned a score (0-100%). If the lead provides conflicting info (e.g., "I want a penthouse but my budget is 1 million"), the system triggers a 'Low Confidence' flag for manual broker review.
+---
+### 🧠 AI-Driven Lead Intelligence
+PropBoost AI transforms raw conversations into structured BANT data (Budget, Authority, Need, Timeline) with a high degree of precision.
+
+![Lead Inbox - Bant Framework](https://github.com/user-attachments/assets/0e8582b9-2879-48bc-a05c-133716894133)
+
+
+### 📈 AI Confidence Scoring
+Every call is assigned a confidence score based on data completeness, allowing brokers to prioritize "Hot" leads instantly.
+
+![Voice - AI screen - Confidence](https://github.com/user-attachments/assets/15eb15e1-278e-43df-a354-b41c4325fca7)
+
 
 ## 🚀 Future Roadmap
 - [ ] WhatsApp Business API Integration
