@@ -28,6 +28,24 @@ Based on our research with local brokers (e.g., Revest, Phoenix Homes):
 - **Our Solution:** PropBoost is "active"—Maya qualifies the lead while you sleep and populates the CRM automatically.
 
 ---
+## 📊 Market Gap and Positioning
+
+| Feature | Legacy CRMs (Property Finder Expert / Bayut Pro) | Basic AI Tools (LionDesk / Chime) | PropBoost AI |
+| :--- | :--- | :--- | :--- |
+| **Response Time** | 30 mins to 4 hours (Manual) | 5–10 mins (Text/Bot) | **< 60 Seconds (Voice)** |
+| **User Effort** | High (Constant Data Entry) | Medium (Chatbot monitoring) | **Zero (Maya updates the CRM)** |
+| **Experience** | Passive (Wait for Broker) | Robotic (Generic Text) | **Human (Natural Voice)** |
+| **Language** | Manual Translation | Translation Plugins | **Native Multi-lingual (AR/EN/HI)** |
+
+---
+
+## ✨ The PropBoost Edge
+
+* **Zero-Touch Workflow:** Maya automatically updates **Lead Details** and creates **Call Summaries**. This directly solves the **50% admin burden** identified in our broker surveys.
+* **Human-Level Intelligence:** Powered by **Vapi + GPT-4o**, Maya operates with sub-second latency and emotional intelligence. She doesn't just "talk"; she **understands intent**, urgency, and budget constraints.
+* **WhatsApp-Centric Handoff:** Recognizing the UAE market's reliance on instant messaging, we integrate WhatsApp as the primary notification tool (moving beyond legacy email-only systems).
+
+---
 
 ## 🎯 Features
 - **Instant Response:** <60 seconds from lead generation to Maya's call.
@@ -62,7 +80,7 @@ To see the **"Wow Factor"** in real-time:
 2. **The Test:** Add a lead with your phone number. 
 3. **The AI Interaction:** When Maya calls, give her a complex answer (e.g., *"I'm looking for a villa in Marina but I only have 2 million dirhams"*). 
 4. **The Result:** Check the dashboard 10 seconds later. You will see Maya flagged the **Budget/Location mismatch** in the summary notes!
-5.Technical Note for Judges: > We are currently resolving a session-sync issue with our cloud provider. If you experience a login loop:
+5.Technical Note for Judges: We are currently resolving a session-sync issue with our cloud provider. If you experience a login loop:
 Please use the Chrome Incognito window. Use the Admin Credentials provided: indrajitsinh.solanki@gmail.com / PropBoost123!.
 If the loop persists, simply refresh the page once after your first login attempt; the session will stabilize.
 
