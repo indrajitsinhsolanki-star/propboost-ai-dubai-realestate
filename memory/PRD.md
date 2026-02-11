@@ -48,6 +48,10 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - ✅ Call recording links in lead detail and dashboard
 - ✅ **BANT Summary Display** - Beautiful visualization of Budget, Authority, Need, Timeline
 - ✅ **AI Confidence Score** - Percentage confidence based on call quality and data collected
+- ✅ **High-Velocity Action Feed** - Priority queue for hot leads with one-tap actions
+- ✅ **WhatsApp Handoff** - One-click export of BANT data to WhatsApp
+- ✅ **Budget Flag** - Red flag if budget < 70% of market average
+- ✅ **RERA 2026 Compliance** - compliance_status field (verified/pending/flagged)
 - ✅ Password Reset Flow (Forgot Password + Reset Password pages)
 - ✅ Twilio WhatsApp integration (PLUG-AND-PLAY)
 - ✅ SendGrid Email integration (PLUG-AND-PLAY)
