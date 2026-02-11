@@ -1,25 +1,57 @@
-# 🚀 PropBoost AI - Eliminating the 50-60% Admin Time in Dubai Real Estate
+**🚀 PropBoost AI — The "Active AI" Employee for Dubai Real Estate**
 
-**PropBoost AI** is an "Active AI" employee designed to help Dubai brokers move away from passive CRMs. We automate the hardest part of the job: **Instant Lead Qualification.**
-
----
-
-## 🏆 Day 7 Hackathon Achievements
-- **Autonomous Voice AI (Maya):** Native multilingual support (EN, AR, HI) with <1.2s latency.
-- **BANT Engine:** 95% accuracy in extracting Budget, Authority, Need, and Timeline from natural speech.
-- **Intelligence Dashboard:** Real-time AI Confidence Scoring and Verified Lead Badges.
+PropBoost AI isn't just another CRM; it’s an AI-native teammate designed to reclaim the 50–60% of time Dubai brokers waste on manual admin. We replace passive data entry with Active Lead Qualification.
 
 ---
 
-## 🏗️ Technical Stack
-- **AI/LLM:** GPT-4o & GPT-4o mini (Logic & Intent Extraction)
-- **Voice Orchestration:** Vapi.ai
-- **Telephony:** Twilio (Custom SIP Trunking for UAE stability)
-- **Frontend:** React.js / Vite
-- **Backend:** Node.js / Express
-- **Data:** Webhooks for real-time CRM synchronization
+## 🏆 Day 7 Hackathon Achievements — From MVP to "Active AI Employee"
+**Autonomous Voice AI (Maya):** Deployed a native multilingual engine (EN, AR, HI) with ultra-low <1.2s latency, enabling human-grade negotiation and instant lead qualification 24/7.
+
+**High-Velocity Action Feed:** Pivoted from a passive CRM table to a prioritized "Battle Plan" UI. Leads are now automatically ranked by revenue potential and urgency, tellings brokers exactly who to call now.
+
+**BANT Intelligence Layer**: Achieved 95% accuracy in extracting structured Budget, Authority, Need, and Timeline data from natural speech, featuring automated "Budget Mismatch" flags for unrealistic leads.
+
+**RERA 2026 SafeGuard**: Pioneered a local compliance-first layer that auto-scans AI outputs for regulatory violations (e.g., guaranteed ROI claims) and prepares logs for Trakheesi permit validation.
+
+****One-Tap WhatsApp Handoff:** Engineered a zero-friction handoff tool that formats BANT data into professional "Lead Battle Plans," directly contributing to the 50–60% reduction in agent admin time.
 
 ---
+
+**## 🏗️ Technical Stack**: Built for Speed & Compliance
+Our architecture is designed for **sub-second latency** and **market-specific regulatory adherence**, moving beyond generic wrappers to a deeply integrated "Active AI" system.
+
+**🧠 Intelligence & Voice Orchestration**
+****LLM Core**: GPT-4o **(Complex Reasoning & Intent Extraction) & GPT-4o-mini (High-speed BANT categorization).
+
+**Voice Engine:** Vapi.ai with custom WebRTC configuration to achieve <1.2s response latency, essential for natural human conversation.
+
+**BANT Logic Engine:** Custom-tuned prompting for the Dubai market, normalizing currencies to AED and mapping natural language to 50+ master communities (e.g., Meydan, Tilal Al Ghaf).
+
+**📞 Communications & Connectivity**
+
+**Telephony:** **Twilio with Custom SIP Trunking,** optimized specifically for UAE telecom stability (Etisalat/DU) to ensure crystal-clear voice quality.
+
+**Handoff Layer:** **WhatsApp Business API** integration for instant "Battle Plan" notifications, bypassing legacy email systems to meet brokers where they work.
+
+**💻 Core Infrastructure**
+
+**Frontend: React.js / Vite** utilizing a high-performance Navy & Gold "Dubai Luxury" UI framework for a premium B2B experience.
+
+**Backend: Node.js / Express** with a modular service-oriented architecture.
+
+**Database: PostgreSQL** (via Emergent) with optimized indexing for real-time lead prioritization and action queuing.
+
+**🛡️ Security & Compliance**
+
+**Auth:** Secure **JWT-based authentication** with bcrypt hashing and **Google OAuth** for frictionless agent onboarding.
+
+**RERA Guardrails:** A proprietary logic layer that cross-references AI outputs against **UAE Media Council & RERA 2026** advertising standards to auto-flag non-compliant listings.
+
+
+
+---
+
+
 
 ## 📊 Market Insight (The "Why")
 Based on our research with local brokers (e.g., Revest, Phoenix Homes):
@@ -28,14 +60,17 @@ Based on our research with local brokers (e.g., Revest, Phoenix Homes):
 - **Our Solution:** PropBoost is "active"—Maya qualifies the lead while you sleep and populates the CRM automatically.
 
 ---
-## 📊 Market Gap and Positioning
+## 📊 Market Gap and Positioning 🏆 The "PropBoost" Advantage
+Dubai agents handle leads from 100+ nationalities across multiple time zones. Legacy tools are too slow. PropBoost wins on speed and local intelligence.
 
 | Feature | Legacy CRMs (Property Finder Expert / Bayut Pro) | Basic AI Tools (LionDesk / Chime) | PropBoost AI |
 | :--- | :--- | :--- | :--- |
 | **Response Time** | 30 mins to 4 hours (Manual) | 5–10 mins (Text/Bot) | **< 60 Seconds (Voice)** |
 | **User Effort** | High (Constant Data Entry) | Medium (Chatbot monitoring) | **Zero (Maya updates the CRM)** |
 | **Experience** | Passive (Wait for Broker) | Robotic (Generic Text) | **Human (Natural Voice)** |
+| **Regulatory Risk** | Human Error | None | **RERA 2026 Safeguard Built-in** |
 | **Language** | Manual Translation | Translation Plugins | **Native Multi-lingual (AR/EN/HI)** |
+| **Hand-off** | Email/In-App | Webhook | **Instant WhatsApp "Battle Plan** |
 
 ---
 
@@ -54,6 +89,10 @@ Based on our research with local brokers (e.g., Revest, Phoenix Homes):
 - **Admin-Free Summaries:** Automatic bulleted summaries for every call.
 
 ---
+**🧠 Core Intelligence: The Maya Engine**
+Our AI agent, **Maya,** doesn't just "talk"—she qualifies. Powered by** Vapi.ai + GPT-4o**, she operates with $< 1.2s$ latency, making her indistinguishable from a human assistant.
+
+--
 
 ## 🎯 BANT Extraction Logic (The "Intelligence" Layer)
 Our system uses a custom-tuned GPT-4o model to extract structured data with high precision. Here is how we define our qualification criteria:
@@ -67,10 +106,10 @@ Our system uses a custom-tuned GPT-4o model to extract structured data with high
 
 > **Confidence Scoring:** Every lead is assigned a score (0-100%). If the lead provides conflicting info (e.g., "I want a penthouse but my budget is 1 million"), the system triggers a 'Low Confidence' flag for manual broker review.
 ---
-### 🧠 AI-Driven Lead Intelligence
-PropBoost AI transforms raw conversations into structured BANT data (Budget, Authority, Need, Timeline) with a high degree of precision.
+### 🧠 AI-Driven Lead Intelligence: From Data to Decisions
+PropBoost AI doesn't just transcribe calls; it transforms raw, unstructured natural language into a structured revenue battle plan using a proprietary multi-stage extraction pipeline. PropBoost AI transforms raw conversations into structured BANT data (Budget, Authority, Need, Timeline) with a high degree of precision.
 
-![Lead Inbox - Bant Framework](https://github.com/user-attachments/assets/0e8582b9-2879-48bc-a05c-133716894133)
+<img width="1573" height="950" alt="image" src="https://github.com/user-attachments/assets/893b3be2-b57b-4056-a7ca-dedfdebd26ff" />
 
 
 ### 📈 AI Confidence Scoring
