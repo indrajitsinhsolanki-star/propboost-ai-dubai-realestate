@@ -1,4 +1,4 @@
-# 🚀 PropBoost AI - Killing the 50-60% Admin Time in Dubai Real Estate
+# 🚀 PropBoost AI - Eliminating the 50-60% Admin Time in Dubai Real Estate
 
 **PropBoost AI** is an "Active AI" employee designed to help Dubai brokers move away from passive CRMs. We automate the hardest part of the job: **Instant Lead Qualification.**
 
