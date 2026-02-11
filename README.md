@@ -90,9 +90,15 @@ Every call is assigned a confidence score based on data completeness, allowing b
 To see the **"Wow Factor"** in real-time:
 1. **Live Demo:** https://propboost-ai.preview.emergentagent.com/
 2. **The Test:** Add a lead with your phone number. 
-3. **The AI Interaction:** When Maya calls, give her a complex answer (e.g., *"I'm looking for a villa in Marina but I only have 2 million dirhams"*). 
-4. **The Result:** Check the dashboard 10 seconds later. You will see Maya flagged the **Budget/Location mismatch** in the summary notes!
+3. **The AI Interaction:** When Maya calls, give her a complex answer (e.g., *"I'm looking for a villa in Marina but I only have 2 million dirhams"*).
+4. **Listen below some of the conversation performed by Maya with client during testing and Demo**
+5. https://storage.vapi.ai/019c37de-9e8d-7334-976e-208b1c10fdce-1770463997113-9d30313b-d0b0-492b-b885-02b5b10bfd21-mono.wav
+6. https://storage.vapi.ai/019c3e11-c00d-788e-a32a-0b98f3451958-1770567987968-90a311a4-50d8-4075-ab88-a21e9d0ab77e-mono.wav
+7. https://storage.vapi.ai/019c3818-aff4-7000-8004-6da5860197b2-1770467763331-762e3888-3fc8-41f3-8a46-d15c449a1f03-mono.wav
+8. https://storage.vapi.ai/019c3818-aff4-7000-8004-6da5860197b2-1770467763331-762e3888-3fc8-41f3-8a46-d15c449a1f03-mono.wav
+9. https://storage.vapi.ai/019c2edd-ecc6-7dd8-8b1c-c88594231087-1770312967182-11c770e4-8306-49c4-9c7c-dd532e9dc5bf-mono.wav
+10. **The Result:** Check the dashboard 10 seconds later. You will see Maya flagged the **Budget/Location mismatch** in the summary notes!
 5.Technical Note for Judges: We are currently resolving a session-sync issue with our cloud provider. If you experience a login loop:
 Please use the Chrome Incognito window. Use the Admin Credentials provided: indrajitsinh.solanki@gmail.com / PropBoost123!.
-If the loop persists, simply refresh the page once after your first login attempt; the session will stabilize.
+If the loop persists, simply refresh the page once after your first login attempt; the session will stabilize
 
