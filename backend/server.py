@@ -115,6 +115,8 @@ class Lead(BaseModel):
     maya_recording_url: str = ""  # Recording URL
     maya_bant: Dict[str, Any] = {}  # BANT qualification data
     maya_confidence_score: int = 0  # AI confidence percentage
+    compliance_status: str = "verified"  # RERA 2026: verified, pending, flagged
+    trakheesi_permit: str = ""  # RERA permit number if applicable
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
