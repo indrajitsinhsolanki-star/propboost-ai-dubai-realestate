@@ -49,6 +49,60 @@ export default function LeadDetail() {
   const [messageType, setMessageType] = useState("reminder");
   const [messageLanguage, setMessageLanguage] = useState("English");
   const [triggeringCall, setTriggeringCall] = useState(false);
+  const [whatsappDialog, setWhatsappDialog] = useState(false);
+
+  // Generate WhatsApp handoff message
+  const generateWhatsAppMessage = () => {
+    if (!lead) return "";
+    const bant = lead.maya_bant || {};
+    const message = `🏠 *PropBoost AI - Lead Qualified*
+
+👤 *Lead:* ${lead.name}
+📞 *Phone:* ${lead.phone}
+📧 *Email:* ${lead.email}
+
+💰 *Budget:* ${bant.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 *Need:* ${bant.need || lead.property_interests?.property_type || "Not specified"}
+⏰ *Timeline:* ${bant.timeline || "Not confirmed"}
+📍 *Location:* ${bant.location || lead.property_interests?.location || "TBD"}
+
+🎯 *Interest Level:* ${bant.interest_level || "Unknown"}
+📊 *AI Confidence:* ${lead.maya_confidence_score || 0}%
+
+📝 *Call Summary:*
+${lead.maya_call_summary || "No call summary available"}
+
+🔗 *View Full Profile:* ${window.location.origin}/leads/${lead.id}`;
+    
+    return encodeURIComponent(message);
+  };
+
+  const copyWhatsAppMessage = () => {
+    if (!lead) return;
+    const bant = lead.maya_bant || {};
+    const message = `🏠 PropBoost AI - Lead Qualified
+
+👤 Lead: ${lead.name}
+📞 Phone: ${lead.phone}
+📧 Email: ${lead.email}
+
+💰 Budget: ${bant.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 Need: ${bant.need || lead.property_interests?.property_type || "Not specified"}
+⏰ Timeline: ${bant.timeline || "Not confirmed"}
+📍 Location: ${bant.location || lead.property_interests?.location || "TBD"}
+
+🎯 Interest Level: ${bant.interest_level || "Unknown"}
+📊 AI Confidence: ${lead.maya_confidence_score || 0}%
+
+📝 Call Summary:
+${lead.maya_call_summary || "No call summary available"}
+
+🔗 View Full Profile: ${window.location.origin}/leads/${lead.id}`;
+    
+    navigator.clipboard.writeText(message);
+    toast.success("Message copied! Paste in WhatsApp");
+    setWhatsappDialog(false);
+  };
 
   useEffect(() => {
     loadLead();
