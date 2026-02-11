@@ -25,10 +25,26 @@ import {
   Loader2,
   Users,
   DollarSign,
-  Building
+  Building,
+  MessageSquare,
+  FileText,
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Shield,
+  Zap
 } from "lucide-react";
 
 const LEAD_SOURCES = ["Property Finder", "Bayut", "Instagram", "WhatsApp", "Walk-in"];
+
+// Dubai market average prices by area/type for budget flagging
+const MARKET_AVERAGES = {
+  "Palm Jumeirah": { Villa: 15000000, Apartment: 3500000, Penthouse: 25000000 },
+  "Downtown Dubai": { Villa: 12000000, Apartment: 2500000, Penthouse: 15000000 },
+  "Dubai Hills": { Villa: 8000000, Apartment: 2000000, Townhouse: 4000000 },
+  "Dubai Marina": { Villa: 10000000, Apartment: 2000000, Penthouse: 8000000 },
+  "default": { Villa: 5000000, Apartment: 1500000, Penthouse: 8000000, Townhouse: 3000000 }
+};
 
 export default function LeadInbox() {
   const { api } = useAuth();
@@ -37,7 +53,8 @@ export default function LeadInbox() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [rescoring, setRescoring] = useState(null);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("action");
+  const [whatsappDialog, setWhatsappDialog] = useState(null);
   
   const [newLead, setNewLead] = useState({
     name: "",
@@ -97,7 +114,6 @@ export default function LeadInbox() {
       });
       toast.success(`Lead created with score: ${response.data.score}/10`);
       
-      // Show Maya call notification for hot leads
       if (response.data.score > 7) {
         toast.info("Maya voice AI will contact this hot lead shortly", { duration: 5000 });
       }
@@ -119,6 +135,76 @@ export default function LeadInbox() {
     } finally {
       setRescoring(null);
     }
+  };
+
+  // Check if budget is below market average
+  const isBudgetBelowMarket = (lead) => {
+    const location = lead.property_interests?.location || "default";
+    const propertyType = lead.property_interests?.property_type || "Apartment";
+    const budget = lead.estimated_deal_value || 0;
+    
+    const marketPrices = MARKET_AVERAGES[location] || MARKET_AVERAGES["default"];
+    const avgPrice = marketPrices[propertyType] || 2000000;
+    
+    return budget > 0 && budget < avgPrice * 0.7; // Flag if 30%+ below market
+  };
+
+  // Get confidence score styling
+  const getConfidenceStyle = (score) => {
+    if (score >= 70) return "bg-green-500 text-white";
+    if (score >= 40) return "bg-yellow-500 text-white";
+    return "bg-red-500 text-white";
+  };
+
+  // Generate WhatsApp handoff message
+  const generateWhatsAppMessage = (lead) => {
+    const bant = lead.maya_bant || {};
+    const message = `🏠 *PropBoost AI - Lead Qualified*
+
+👤 *Lead:* ${lead.name}
+📞 *Phone:* ${lead.phone}
+📧 *Email:* ${lead.email}
+
+💰 *Budget:* ${bant.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 *Need:* ${bant.need || lead.property_interests?.property_type || "Not specified"}
+⏰ *Timeline:* ${bant.timeline || "Not confirmed"}
+📍 *Location:* ${bant.location || lead.property_interests?.location || "TBD"}
+
+🎯 *Interest Level:* ${bant.interest_level || "Unknown"}
+📊 *AI Confidence:* ${lead.maya_confidence_score || 0}%
+
+📝 *Call Summary:*
+${lead.maya_call_summary || "No call summary available"}
+
+🔗 *View Full Profile:* ${window.location.origin}/leads/${lead.id}`;
+    
+    return encodeURIComponent(message);
+  };
+
+  const copyWhatsAppMessage = (lead) => {
+    const bant = lead.maya_bant || {};
+    const message = `🏠 PropBoost AI - Lead Qualified
+
+👤 Lead: ${lead.name}
+📞 Phone: ${lead.phone}
+📧 Email: ${lead.email}
+
+💰 Budget: ${bant.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 Need: ${bant.need || lead.property_interests?.property_type || "Not specified"}
+⏰ Timeline: ${bant.timeline || "Not confirmed"}
+📍 Location: ${bant.location || lead.property_interests?.location || "TBD"}
+
+🎯 Interest Level: ${bant.interest_level || "Unknown"}
+📊 AI Confidence: ${lead.maya_confidence_score || 0}%
+
+📝 Call Summary:
+${lead.maya_call_summary || "No call summary available"}
+
+🔗 View Full Profile: ${window.location.origin}/leads/${lead.id}`;
+    
+    navigator.clipboard.writeText(message);
+    toast.success("Message copied! Paste in WhatsApp");
+    setWhatsappDialog(null);
   };
 
   const getScoreColor = (score) => {
@@ -143,13 +229,27 @@ export default function LeadInbox() {
     }
   };
 
-  const filteredLeads = leads.filter(lead => {
-    if (activeTab === "hot") return lead.score >= 8;
-    if (activeTab === "warm") return lead.score >= 6 && lead.score < 8;
-    if (activeTab === "cold") return lead.score < 6;
-    return true;
-  });
+  // Filter leads based on tab
+  const getFilteredLeads = () => {
+    switch(activeTab) {
+      case "action":
+        // Action queue: Hot leads with Maya data OR leads needing attention
+        return leads
+          .filter(l => l.score >= 7 || l.maya_call_status === "completed")
+          .sort((a, b) => (b.maya_confidence_score || 0) - (a.maya_confidence_score || 0));
+      case "hot":
+        return leads.filter(l => l.score >= 8);
+      case "warm":
+        return leads.filter(l => l.score >= 6 && l.score < 8);
+      case "cold":
+        return leads.filter(l => l.score < 6);
+      default:
+        return leads;
+    }
+  };
 
+  const filteredLeads = getFilteredLeads();
+  const actionCount = leads.filter(l => l.score >= 7 || l.maya_call_status === "completed").length;
   const hotCount = leads.filter(l => l.score >= 8).length;
   const warmCount = leads.filter(l => l.score >= 6 && l.score < 8).length;
   const coldCount = leads.filter(l => l.score < 6).length;
@@ -160,9 +260,9 @@ export default function LeadInbox() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A]" style={{ fontFamily: 'Playfair Display, serif' }}>
-            Lead Inbox
+            Action Feed
           </h1>
-          <p className="text-gray-500 mt-1">AI-scored leads ready for action</p>
+          <p className="text-gray-500 mt-1">High-velocity lead queue powered by Maya AI</p>
         </div>
         
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -182,12 +282,13 @@ export default function LeadInbox() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Name *</Label>
+                  <Label>Full Name *</Label>
                   <Input
                     data-testid="lead-name-input"
-                    placeholder="Full name"
+                    placeholder="Ahmed Al Rashid"
                     value={newLead.name}
                     onChange={(e) => setNewLead({...newLead, name: e.target.value})}
                   />
@@ -196,30 +297,24 @@ export default function LeadInbox() {
                   <Label>Phone *</Label>
                   <Input
                     data-testid="lead-phone-input"
-                    placeholder="+971 XX XXX XXXX"
+                    placeholder="+971 50 123 4567"
                     value={newLead.phone}
                     onChange={(e) => setNewLead({...newLead, phone: e.target.value})}
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Email *</Label>
                   <Input
                     data-testid="lead-email-input"
                     type="email"
-                    placeholder="email@example.com"
+                    placeholder="ahmed@example.com"
                     value={newLead.email}
                     onChange={(e) => setNewLead({...newLead, email: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Language</Label>
-                  <Select 
-                    value={newLead.language_preference}
-                    onValueChange={(val) => setNewLead({...newLead, language_preference: val})}
-                  >
+                  <Select value={newLead.language_preference} onValueChange={(val) => setNewLead({...newLead, language_preference: val})}>
                     <SelectTrigger data-testid="lead-language-select">
                       <SelectValue />
                     </SelectTrigger>
@@ -235,49 +330,58 @@ export default function LeadInbox() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Lead Source & Value */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Lead Source</Label>
-                  <Select 
-                    value={newLead.lead_source}
-                    onValueChange={(val) => setNewLead({...newLead, lead_source: val})}
-                  >
+                  <Select value={newLead.lead_source} onValueChange={(val) => setNewLead({...newLead, lead_source: val})}>
                     <SelectTrigger data-testid="lead-source-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {LEAD_SOURCES.map(source => (
-                        <SelectItem key={source} value={source}>{source}</SelectItem>
+                      {LEAD_SOURCES.map(src => (
+                        <SelectItem key={src} value={src}>{src}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Est. Deal Value (AED)</Label>
+                  <Label>Estimated Deal Value (AED)</Label>
                   <Input
                     data-testid="lead-deal-value-input"
                     type="number"
-                    placeholder="2,500,000"
+                    placeholder="5000000"
                     value={newLead.estimated_deal_value}
                     onChange={(e) => setNewLead({...newLead, estimated_deal_value: e.target.value})}
                   />
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Property Interests</h4>
-                <div className="grid grid-cols-2 gap-4">
+              {/* Property Interests */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Property Interests</Label>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Location</Label>
-                    <Input
-                      data-testid="lead-location-input"
-                      placeholder="e.g., Downtown Dubai"
+                    <Select 
                       value={newLead.property_interests.location}
-                      onChange={(e) => setNewLead({
+                      onValueChange={(val) => setNewLead({
                         ...newLead, 
-                        property_interests: {...newLead.property_interests, location: e.target.value}
+                        property_interests: {...newLead.property_interests, location: val}
                       })}
-                    />
+                    >
+                      <SelectTrigger data-testid="lead-location-select">
+                        <SelectValue placeholder="Select area" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Palm Jumeirah">Palm Jumeirah</SelectItem>
+                        <SelectItem value="Downtown Dubai">Downtown Dubai</SelectItem>
+                        <SelectItem value="Dubai Hills">Dubai Hills</SelectItem>
+                        <SelectItem value="Dubai Marina">Dubai Marina</SelectItem>
+                        <SelectItem value="JBR">JBR</SelectItem>
+                        <SelectItem value="Business Bay">Business Bay</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Bedrooms</Label>
@@ -365,11 +469,11 @@ export default function LeadInbox() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-white border border-gray-200 p-1 rounded-full">
           <TabsTrigger 
-            value="all" 
-            data-testid="tab-all-leads"
-            className="rounded-full data-[state=active]:bg-[#001F3F] data-[state=active]:text-white px-6"
+            value="action" 
+            data-testid="tab-action-queue"
+            className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white px-6"
           >
-            All ({leads.length})
+            <Zap className="w-4 h-4 mr-1" /> Action Queue ({actionCount})
           </TabsTrigger>
           <TabsTrigger 
             value="hot"
@@ -392,23 +496,30 @@ export default function LeadInbox() {
           >
             <Snowflake className="w-4 h-4 mr-1" /> Cold ({coldCount})
           </TabsTrigger>
+          <TabsTrigger 
+            value="all"
+            data-testid="tab-all-leads"
+            className="rounded-full data-[state=active]:bg-gray-700 data-[state=active]:text-white px-6"
+          >
+            All ({leads.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
           {loading ? (
             <div className="space-y-4">
               {[1,2,3].map(i => (
-                <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
+                <div key={i} className="h-40 bg-gray-200 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filteredLeads.length === 0 ? (
             <Card className="bg-white border border-gray-100">
               <CardContent className="p-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
+                  <Zap className="w-8 h-8 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700">No leads found</h3>
-                <p className="text-gray-500 mt-1">Add your first lead to get started</p>
+                <h3 className="text-lg font-semibold text-gray-700">No leads in action queue</h3>
+                <p className="text-gray-500 mt-1">Add hot leads or wait for Maya to qualify them</p>
               </CardContent>
             </Card>
           ) : (
@@ -419,65 +530,202 @@ export default function LeadInbox() {
                   className={`bg-white border-l-4 ${
                     lead.score >= 8 ? 'border-l-red-500' : 
                     lead.score >= 6 ? 'border-l-orange-400' : 'border-l-blue-500'
-                  } shadow-sm card-hover animate-fade-in`}
+                  } shadow-sm hover:shadow-md transition-shadow animate-fade-in`}
                   style={{ animationDelay: `${index * 50}ms` }}
+                  data-testid={`lead-card-${lead.id}`}
                 >
                   <CardContent className="p-4 md:p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      {/* Lead Info */}
-                      <div className="flex items-start gap-4">
-                        <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center ${getScoreColor(lead.score)} border`}>
-                          {getScoreIcon(lead.score)}
-                          <span className="text-lg font-bold">{lead.score}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link 
-                              to={`/leads/${lead.id}`}
-                              className="text-lg font-semibold text-[#0F172A] hover:text-[#D4AF37] transition-colors"
-                            >
-                              {lead.name}
-                            </Link>
-                            <Badge className={`text-xs ${getSourceBadgeColor(lead.lead_source)}`}>
-                              {lead.lead_source}
-                            </Badge>
-                            {lead.maya_call_status && (
-                              <Badge className="text-xs bg-purple-100 text-purple-700">
-                                Maya: {lead.maya_call_status}
+                    <div className="flex flex-col gap-4">
+                      {/* Top Row: Score + Info + Confidence */}
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          {/* Score Badge */}
+                          <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center ${getScoreColor(lead.score)} border`}>
+                            {getScoreIcon(lead.score)}
+                            <span className="text-lg font-bold">{lead.score}</span>
+                          </div>
+                          
+                          {/* Lead Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link 
+                                to={`/leads/${lead.id}`}
+                                className="text-lg font-semibold text-[#0F172A] hover:text-[#D4AF37] transition-colors"
+                              >
+                                {lead.name}
+                              </Link>
+                              <Badge className={`text-xs ${getSourceBadgeColor(lead.lead_source)}`}>
+                                {lead.lead_source}
                               </Badge>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" /> {lead.phone}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" /> {lead.email}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Globe className="w-3 h-3" /> {lead.language_preference}
-                            </span>
-                            {lead.estimated_deal_value > 0 && (
-                              <span className="flex items-center gap-1 text-[#D4AF37] font-medium">
-                                <DollarSign className="w-3 h-3" /> {(lead.estimated_deal_value / 1000000).toFixed(1)}M AED
+                              
+                              {/* Confidence Score */}
+                              {lead.maya_confidence_score > 0 && (
+                                <Badge className={`text-xs ${getConfidenceStyle(lead.maya_confidence_score)}`}>
+                                  {lead.maya_confidence_score}% Confident
+                                </Badge>
+                              )}
+                              
+                              {/* Budget Flag */}
+                              {isBudgetBelowMarket(lead) && (
+                                <Badge className="text-xs bg-red-100 text-red-700 border border-red-200">
+                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                                  Budget Below Market
+                                </Badge>
+                              )}
+                              
+                              {/* Maya Status */}
+                              {lead.maya_call_status === "completed" && (
+                                <Badge className="text-xs bg-green-100 text-green-700">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Maya Qualified
+                                </Badge>
+                              )}
+                              
+                              {/* Compliance Status */}
+                              {lead.compliance_status === "pending" && (
+                                <Badge className="text-xs bg-yellow-100 text-yellow-700">
+                                  <Shield className="w-3 h-3 mr-1" />
+                                  RERA Pending
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3" /> {lead.phone}
                               </span>
+                              <span className="flex items-center gap-1">
+                                <Globe className="w-3 h-3" /> {lead.language_preference}
+                              </span>
+                              {lead.estimated_deal_value > 0 && (
+                                <span className="flex items-center gap-1 text-[#D4AF37] font-medium">
+                                  <DollarSign className="w-3 h-3" /> {(lead.estimated_deal_value / 1000000).toFixed(1)}M AED
+                                </span>
+                              )}
+                              {lead.maya_bant?.timeline && (
+                                <span className="flex items-center gap-1 text-purple-600">
+                                  <Calendar className="w-3 h-3" /> {lead.maya_bant.timeline}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* BANT Quick View */}
+                            {lead.maya_bant && Object.keys(lead.maya_bant).length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {lead.maya_bant.budget && (
+                                  <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full">
+                                    💰 {lead.maya_bant.budget}
+                                  </span>
+                                )}
+                                {lead.maya_bant.location && (
+                                  <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                                    📍 {lead.maya_bant.location}
+                                  </span>
+                                )}
+                                {lead.maya_bant.interest_level && (
+                                  <span className={`text-xs px-2 py-1 rounded-full ${
+                                    lead.maya_bant.interest_level === 'high' ? 'bg-green-50 text-green-700' :
+                                    lead.maya_bant.interest_level === 'medium' ? 'bg-yellow-50 text-yellow-700' :
+                                    'bg-gray-50 text-gray-700'
+                                  }`}>
+                                    🎯 {lead.maya_bant.interest_level} interest
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {lead.ai_briefing && (
-                            <p className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
-                              {lead.ai_briefing}
-                            </p>
-                          )}
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize">
-                          {lead.stage}
-                        </Badge>
+                      {/* Action Buttons Row */}
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                        {/* Open Call Summary */}
+                        <Link to={`/leads/${lead.id}`}>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            data-testid={`open-summary-${lead.id}`}
+                            className="rounded-full text-purple-600 border-purple-200 hover:bg-purple-50"
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            {lead.maya_call_summary ? "View Summary" : "View Lead"}
+                          </Button>
+                        </Link>
+                        
+                        {/* WhatsApp Handoff */}
+                        <Dialog open={whatsappDialog === lead.id} onOpenChange={(open) => setWhatsappDialog(open ? lead.id : null)}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              data-testid={`whatsapp-${lead.id}`}
+                              className="rounded-full text-green-600 border-green-200 hover:bg-green-50"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              WhatsApp Handoff
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-green-600" />
+                                Send to WhatsApp
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 mt-4">
+                              <div className="p-4 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                                {`🏠 PropBoost AI - Lead Qualified
+
+👤 Lead: ${lead.name}
+📞 Phone: ${lead.phone}
+
+💰 Budget: ${lead.maya_bant?.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 Need: ${lead.maya_bant?.need || lead.property_interests?.property_type || "Not specified"}
+⏰ Timeline: ${lead.maya_bant?.timeline || "Not confirmed"}
+
+🎯 Interest: ${lead.maya_bant?.interest_level || "Unknown"}
+📊 AI Confidence: ${lead.maya_confidence_score || 0}%
+
+📝 Summary: ${lead.maya_call_summary || "No summary available"}`}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  onClick={() => copyWhatsAppMessage(lead)}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 rounded-full"
+                                  data-testid={`copy-whatsapp-${lead.id}`}
+                                >
+                                  Copy Message
+                                </Button>
+                                <a 
+                                  href={`https://wa.me/?text=${generateWhatsAppMessage(lead)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1"
+                                >
+                                  <Button className="w-full bg-[#25D366] hover:bg-[#128C7E] rounded-full">
+                                    Open WhatsApp
+                                  </Button>
+                                </a>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        {/* Book Viewing */}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          data-testid={`book-viewing-${lead.id}`}
+                          className="rounded-full text-[#D4AF37] border-[#D4AF37]/30 hover:bg-[#D4AF37]/10"
+                          onClick={() => toast.info("Viewing scheduler coming soon!")}
+                        >
+                          <Calendar className="w-4 h-4 mr-1" />
+                          Book Viewing
+                        </Button>
+                        
+                        {/* Rescore */}
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           data-testid={`rescore-lead-${lead.id}`}
                           onClick={() => handleRescore(lead.id)}
@@ -490,14 +738,16 @@ export default function LeadInbox() {
                             <RefreshCw className="w-4 h-4" />
                           )}
                         </Button>
-                        <Link to={`/leads/${lead.id}`}>
+                        
+                        {/* View Full Profile */}
+                        <Link to={`/leads/${lead.id}`} className="ml-auto">
                           <Button 
-                            variant="outline" 
+                            variant="default" 
                             size="sm"
                             data-testid={`view-lead-${lead.id}`}
-                            className="rounded-full"
+                            className="rounded-full bg-[#001F3F] hover:bg-[#001F3F]/90"
                           >
-                            View <ChevronRight className="w-4 h-4 ml-1" />
+                            Full Profile <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
                         </Link>
                       </div>
