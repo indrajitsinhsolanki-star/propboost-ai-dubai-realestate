@@ -240,21 +240,101 @@ ${lead.maya_call_summary || "No call summary available"}
   return (
     <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          data-testid="back-btn"
-          onClick={() => navigate("/leads")}
-          className="rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]" style={{ fontFamily: 'Playfair Display, serif' }}>
-            {lead.name}
-          </h1>
-          <p className="text-gray-500">Lead Details</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            data-testid="back-btn"
+            onClick={() => navigate("/leads")}
+            className="rounded-full"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]" style={{ fontFamily: 'Playfair Display, serif' }}>
+              {lead.name}
+            </h1>
+            <p className="text-gray-500">Lead Details</p>
+          </div>
+        </div>
+        
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2">
+          {/* WhatsApp Handoff Button */}
+          <Dialog open={whatsappDialog} onOpenChange={setWhatsappDialog}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-[#25D366] hover:bg-[#128C7E] rounded-full"
+                data-testid="whatsapp-handoff-btn"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                WhatsApp Handoff
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-green-600" />
+                  Send BANT Data to WhatsApp
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="p-4 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap max-h-64 overflow-y-auto font-mono">
+                  {`🏠 PropBoost AI - Lead Qualified
+
+👤 Lead: ${lead.name}
+📞 Phone: ${lead.phone}
+📧 Email: ${lead.email}
+
+💰 Budget: ${lead.maya_bant?.budget || lead.property_interests?.budget || "Not confirmed"}
+🏢 Need: ${lead.maya_bant?.need || lead.property_interests?.property_type || "Not specified"}
+⏰ Timeline: ${lead.maya_bant?.timeline || "Not confirmed"}
+📍 Location: ${lead.maya_bant?.location || lead.property_interests?.location || "TBD"}
+
+🎯 Interest: ${lead.maya_bant?.interest_level || "Unknown"}
+📊 AI Confidence: ${lead.maya_confidence_score || 0}%
+
+📝 Summary: 
+${lead.maya_call_summary || "No summary available"}`}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={copyWhatsAppMessage}
+                    className="flex-1 rounded-full"
+                    variant="outline"
+                    data-testid="copy-whatsapp-message"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Message
+                  </Button>
+                  <a 
+                    href={`https://wa.me/?text=${generateWhatsAppMessage()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1"
+                  >
+                    <Button className="w-full bg-[#25D366] hover:bg-[#128C7E] rounded-full">
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open WhatsApp
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          {/* Compliance Badge */}
+          {lead.compliance_status && (
+            <Badge className={`rounded-full px-3 py-1 ${
+              lead.compliance_status === 'verified' ? 'bg-green-100 text-green-700' :
+              lead.compliance_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-red-100 text-red-700'
+            }`}>
+              <Shield className="w-3 h-3 mr-1" />
+              RERA: {lead.compliance_status}
+            </Badge>
+          )}
         </div>
       </div>
 
