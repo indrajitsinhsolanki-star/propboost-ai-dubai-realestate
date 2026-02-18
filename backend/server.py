@@ -1864,31 +1864,34 @@ async def get_source_performance(user: dict = Depends(require_auth)):
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(require_auth)):
-    """Get dashboard overview statistics"""
-    total_leads = await db.leads.count_documents({})
-    hot_leads = await db.leads.count_documents({"score": {"$gte": 8}})
-    warm_leads = await db.leads.count_documents({"score": {"$gte": 6, "$lt": 8}})
-    cold_leads = await db.leads.count_documents({"score": {"$lt": 6}})
+    """Get dashboard overview statistics - MULTI-TENANT: Only user's own data"""
+    # MULTI-TENANT: Filter by owner_id
+    user_filter = {"owner_id": user["user_id"]}
     
-    total_properties = await db.properties.count_documents({})
-    total_content = await db.generated_content.count_documents({})
-    approved_content = await db.generated_content.count_documents({"approved": True})
+    total_leads = await db.leads.count_documents(user_filter)
+    hot_leads = await db.leads.count_documents({**user_filter, "score": {"$gte": 8}})
+    warm_leads = await db.leads.count_documents({**user_filter, "score": {"$gte": 6, "$lt": 8}})
+    cold_leads = await db.leads.count_documents({**user_filter, "score": {"$lt": 6}})
+    
+    total_properties = await db.properties.count_documents(user_filter)
+    total_content = await db.generated_content.count_documents(user_filter)
+    approved_content = await db.generated_content.count_documents({**user_filter, "approved": True})
     
     # Pipeline counts
     pipeline_counts = {}
     for stage in ["new", "qualified", "viewing", "negotiation", "closing", "won", "lost"]:
-        pipeline_counts[stage] = await db.leads.count_documents({"stage": stage})
+        pipeline_counts[stage] = await db.leads.count_documents({**user_filter, "stage": stage})
     
     # Score distribution
     score_distribution = []
     for i in range(1, 11):
-        count = await db.leads.count_documents({"score": i})
+        count = await db.leads.count_documents({**user_filter, "score": i})
         score_distribution.append({"score": i, "count": count})
     
     # Lead source distribution
     source_distribution = []
     for source in ["Property Finder", "Bayut", "Instagram", "WhatsApp", "Walk-in"]:
-        count = await db.leads.count_documents({"lead_source": source})
+        count = await db.leads.count_documents({**user_filter, "lead_source": source})
         source_distribution.append({"source": source, "count": count})
     
     return {
@@ -1915,14 +1918,16 @@ async def get_dashboard_stats(user: dict = Depends(require_auth)):
 
 @api_router.get("/activity-logs")
 async def get_activity_logs(limit: int = 50, user: dict = Depends(require_auth)):
-    """Get recent activity logs"""
-    logs = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    """Get recent activity logs - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by user_id
+    logs = await db.activity_logs.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return logs
 
 @api_router.get("/compliance-audits")
 async def get_compliance_audits(limit: int = 50, user: dict = Depends(require_auth)):
-    """Get compliance audit records"""
-    audits = await db.compliance_audits.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    """Get compliance audit records - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by reviewed_by (user_id)
+    audits = await db.compliance_audits.find({"reviewed_by": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return audits
 
 # Include routers
