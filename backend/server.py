@@ -1434,8 +1434,10 @@ async def get_voice_call_logs(limit: int = 20, user: dict = Depends(require_auth
 
 @api_router.post("/properties", response_model=Property)
 async def create_property(property_input: PropertyCreate, user: dict = Depends(require_auth)):
-    """Create a new property"""
+    """Create a new property - MULTI-TENANT: Property is owned by current user"""
     property_obj = Property(**property_input.model_dump())
+    # MULTI-TENANT: Set owner to current user
+    property_obj.owner_id = user["user_id"]
     doc = property_obj.model_dump()
     await db.properties.insert_one(doc)
     await log_activity("property_created", "property", property_obj.id, {"title": property_obj.title}, user.get("user_id", ""))
@@ -1443,22 +1445,25 @@ async def create_property(property_input: PropertyCreate, user: dict = Depends(r
 
 @api_router.get("/properties", response_model=List[Property])
 async def get_properties(user: dict = Depends(require_auth)):
-    """Get all properties"""
-    properties = await db.properties.find({}, {"_id": 0}).to_list(1000)
+    """Get all properties - MULTI-TENANT: Only returns user's own properties"""
+    # MULTI-TENANT: Filter by owner_id
+    properties = await db.properties.find({"owner_id": user["user_id"]}, {"_id": 0}).to_list(1000)
     return properties
 
 @api_router.get("/properties/{property_id}", response_model=Property)
 async def get_property(property_id: str, user: dict = Depends(require_auth)):
-    """Get a single property"""
-    property_obj = await db.properties.find_one({"id": property_id}, {"_id": 0})
+    """Get a single property - MULTI-TENANT: Only returns if user owns the property"""
+    # MULTI-TENANT: Filter by owner_id
+    property_obj = await db.properties.find_one({"id": property_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not property_obj:
         raise HTTPException(status_code=404, detail="Property not found")
     return property_obj
 
 @api_router.delete("/properties/{property_id}")
 async def delete_property(property_id: str, user: dict = Depends(require_auth)):
-    """Delete a property"""
-    result = await db.properties.delete_one({"id": property_id})
+    """Delete a property - MULTI-TENANT: Only deletes if user owns the property"""
+    # MULTI-TENANT: Filter by owner_id
+    result = await db.properties.delete_one({"id": property_id, "owner_id": user["user_id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Property not found")
     return {"message": "Property deleted successfully"}
@@ -1467,8 +1472,9 @@ async def delete_property(property_id: str, user: dict = Depends(require_auth)):
 
 @api_router.post("/content/generate")
 async def generate_content(request: ContentRequest, user: dict = Depends(require_auth)):
-    """Generate multilingual content for a property with RERA compliance check"""
-    property_obj = await db.properties.find_one({"id": request.property_id}, {"_id": 0})
+    """Generate multilingual content for a property with RERA compliance check - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    property_obj = await db.properties.find_one({"id": request.property_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not property_obj:
         raise HTTPException(status_code=404, detail="Property not found")
     
