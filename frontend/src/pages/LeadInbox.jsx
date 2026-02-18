@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { Badge } from "../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
@@ -12,118 +11,169 @@ import { Link } from "react-router-dom";
 import { 
   Plus, 
   Phone, 
-  Mail, 
   MessageSquare,
   Calendar,
   Headphones,
-  FileText,
   Send,
   Sparkles,
   Loader2,
   Bot,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Globe,
   ChevronRight,
   Moon,
-  Sun
+  Sun,
+  Star
 } from "lucide-react";
 
 const LEAD_SOURCES = ["Property Finder", "Bayut", "Instagram", "WhatsApp", "Walk-in"];
 
+// Urgent keywords that auto-bump to P1
+const URGENT_KEYWORDS = ['immediately', 'urgent', 'today', 'asap', 'now', 'right away', 'quick', 'fast', 'hurry', 'emergency'];
+
 /**
- * PRIORITY CALCULATION LOGIC:
- * P1 🔥 = Score >85 (8.5/10) AND contacted in last 30 mins
- * P2 ⚡ = Score 65-85 (6.5-8.5/10) OR has upcoming viewing/visit
+ * PRIORITY CALCULATION LOGIC (UPDATED):
+ * ⭐ NEW = Lead created in last 30 minutes (highest priority - first contact window)
+ * P1 🔥 = Contains urgent keywords OR (Score >85 AND contacted in last 30 mins)
+ * P2 ⚡ = Score 65-85 OR has upcoming viewing OR (Score 60+ AND created < 60 mins)
  * P3 📞 = Score <65 OR no contact in 3+ days
- * Unassigned = New leads with no score yet
  */
 const calculatePriority = (lead) => {
   const score = (lead.score || 0) * 10; // Convert to 0-100 scale
-  const lastContact = lead.updated_at ? new Date(lead.updated_at) : new Date(lead.created_at);
+  const createdAt = new Date(lead.created_at);
+  const lastContact = lead.updated_at ? new Date(lead.updated_at) : createdAt;
   const now = new Date();
+  const minutesSinceCreated = (now - createdAt) / (1000 * 60);
   const minutesSinceContact = (now - lastContact) / (1000 * 60);
   const daysSinceContact = minutesSinceContact / (60 * 24);
   
-  // Check for upcoming viewing in BANT timeline
-  const hasUpcomingViewing = lead.maya_bant?.timeline?.toLowerCase().includes('today') ||
-                             lead.maya_bant?.timeline?.toLowerCase().includes('tomorrow') ||
-                             lead.maya_bant?.timeline?.toLowerCase().includes('week') ||
-                             lead.maya_bant?.timeline?.toLowerCase().includes('visiting');
+  // Check for urgent keywords in notes/description
+  const textToCheck = `${lead.notes || ''} ${lead.maya_call_summary || ''} ${lead.ai_briefing || ''}`.toLowerCase();
+  const hasUrgentKeyword = URGENT_KEYWORDS.some(keyword => textToCheck.includes(keyword));
   
-  // P1: Hot - High score AND recent contact
-  if (score > 85 && minutesSinceContact <= 30) {
+  // Check for upcoming viewing in BANT timeline
+  const timeline = (lead.maya_bant?.timeline || '').toLowerCase();
+  const hasUpcomingViewing = timeline.includes('today') || timeline.includes('tomorrow') || 
+                             timeline.includes('week') || timeline.includes('visiting');
+  
+  // ⭐ NEW: Lead created in last 30 minutes - HIGHEST PRIORITY
+  if (minutesSinceCreated <= 30) {
+    const minsRemaining = Math.max(0, Math.ceil(30 - minutesSinceCreated));
+    return { 
+      level: 'NEW', 
+      icon: '⭐', 
+      label: 'New', 
+      color: 'bg-yellow-400', 
+      textColor: 'text-yellow-500', 
+      borderColor: 'border-yellow-400',
+      countdown: minsRemaining
+    };
+  }
+  
+  // P1 🔥: Urgent keywords OR high score with recent contact
+  if (hasUrgentKeyword || (score > 85 && minutesSinceContact <= 30)) {
     return { level: 'P1', icon: '🔥', label: 'Urgent', color: 'bg-red-500', textColor: 'text-red-500', borderColor: 'border-red-500' };
   }
   
-  // P2: Active - Medium-high score OR has upcoming activity
-  if ((score >= 65 && score <= 85) || hasUpcomingViewing || lead.maya_call_status === 'completed') {
+  // P2 ⚡: Medium-high score OR upcoming viewing OR new-ish lead with decent score
+  // RULE: Score 60+ AND created < 60 mins = P2 minimum (never P3)
+  if ((score >= 65 && score <= 85) || hasUpcomingViewing || lead.maya_call_status === 'completed' ||
+      (score >= 60 && minutesSinceCreated <= 60)) {
     return { level: 'P2', icon: '⚡', label: 'Active', color: 'bg-amber-500', textColor: 'text-amber-500', borderColor: 'border-amber-500' };
   }
   
-  // P3: Follow-up needed - Low score OR stale contact
+  // P3 📞: Low score OR stale contact
   if (score < 65 || daysSinceContact >= 3) {
     return { level: 'P3', icon: '📞', label: 'Follow-up', color: 'bg-blue-500', textColor: 'text-blue-500', borderColor: 'border-blue-500' };
   }
   
-  // Default P2 for others
+  // Default P2
   return { level: 'P2', icon: '⚡', label: 'Active', color: 'bg-amber-500', textColor: 'text-amber-500', borderColor: 'border-amber-500' };
 };
 
-// Generate "WHY NOW" reason
-const getWhyNow = (lead) => {
-  const lastContact = lead.updated_at ? new Date(lead.updated_at) : new Date(lead.created_at);
+/**
+ * DYNAMIC "WHY NOW" TEXT - References actual lead data
+ */
+const getWhyNow = (lead, priority) => {
+  const createdAt = new Date(lead.created_at);
+  const lastContact = lead.updated_at ? new Date(lead.updated_at) : createdAt;
   const now = new Date();
-  const hoursSinceContact = (now - lastContact) / (1000 * 60 * 60);
-  const daysSinceContact = hoursSinceContact / 24;
+  const minutesSinceCreated = Math.floor((now - createdAt) / (1000 * 60));
+  const hoursSinceContact = Math.floor((now - lastContact) / (1000 * 60 * 60));
+  const daysSinceContact = Math.floor(hoursSinceContact / 24);
   
-  // Check BANT data for urgency signals
-  if (lead.maya_bant?.timeline) {
-    const timeline = lead.maya_bant.timeline.toLowerCase();
-    if (timeline.includes('today') || timeline.includes('2 hr') || timeline.includes('urgent')) {
-      return `Viewing in ${lead.maya_bant.timeline}`;
-    }
-    if (timeline.includes('tomorrow')) {
-      return 'Viewing scheduled tomorrow';
-    }
-    if (timeline.includes('week') || timeline.includes('visiting')) {
-      return `${lead.maya_bant.timeline} - act now`;
+  const textToCheck = `${lead.notes || ''} ${lead.maya_call_summary || ''} ${lead.ai_briefing || ''}`.toLowerCase();
+  const bant = lead.maya_bant || {};
+  const budget = lead.estimated_deal_value || 0;
+  const budgetStr = budget >= 1000000 ? `${(budget/1000000).toFixed(1)}M AED` : budget > 0 ? `${budget.toLocaleString()} AED` : null;
+  
+  // ⭐ NEW leads - countdown timer
+  if (priority.level === 'NEW') {
+    return `First contact window: ${priority.countdown} mins remaining`;
+  }
+  
+  // Check for urgent keywords and quote them
+  for (const keyword of URGENT_KEYWORDS) {
+    if (textToCheck.includes(keyword)) {
+      return `Said "${keyword}" — call within 1 hour`;
     }
   }
   
-  // Pre-approved buyers are hot
-  if (lead.notes?.toLowerCase().includes('pre-approved') || 
-      lead.maya_call_summary?.toLowerCase().includes('pre-approved')) {
-    return 'Pre-approved buyer ready to move';
+  // Viewing scheduled
+  if (bant.timeline) {
+    const timeline = bant.timeline.toLowerCase();
+    if (timeline.includes('today')) return `Viewing scheduled TODAY — confirm now`;
+    if (timeline.includes('tomorrow')) return `Viewing scheduled tomorrow — confirm now`;
+    if (timeline.includes('2 hr') || timeline.includes('2hr')) return `Viewing in 2 hours — prepare now`;
   }
   
-  // High score + recent = hot
-  if (lead.score >= 9 && hoursSinceContact <= 2) {
-    return 'Hot lead - respond within 2 hrs';
+  // Budget confirmed - high value
+  if (budgetStr && budget >= 4000000) {
+    return `Budget confirmed ${budgetStr} — send property options`;
   }
   
-  // Maya qualified
+  // Maya qualified with high confidence
   if (lead.maya_call_status === 'completed' && lead.maya_confidence_score >= 70) {
-    return 'Maya qualified - high confidence';
+    return `Maya qualified ${lead.maya_confidence_score}% confidence — follow up`;
+  }
+  
+  // Pre-approved buyer
+  if (textToCheck.includes('pre-approved') || textToCheck.includes('preapproved')) {
+    return `Pre-approved buyer — ready to close`;
+  }
+  
+  // New lead (created < 60 mins)
+  if (minutesSinceCreated <= 60) {
+    return `New lead, ${minutesSinceCreated} mins old — first contact window open`;
   }
   
   // No contact warning
+  if (daysSinceContact >= 5) {
+    return `No contact in ${daysSinceContact} days — going cold, act today`;
+  }
   if (daysSinceContact >= 3) {
-    return `No contact in ${Math.floor(daysSinceContact)} days`;
+    return `No contact in ${daysSinceContact} days — needs attention`;
   }
   
   // International investor
-  if (lead.maya_bant?.location?.toLowerCase().includes('india') ||
-      lead.maya_bant?.location?.toLowerCase().includes('abroad') ||
-      lead.language_preference !== 'English' && lead.language_preference !== 'Arabic') {
-    return 'International investor - time sensitive';
+  if (lead.language_preference && !['English', 'Arabic'].includes(lead.language_preference)) {
+    return `International lead (${lead.language_preference}) — time zone sensitive`;
   }
   
-  // Default based on score
-  if (lead.score >= 8) return 'High-value lead needs attention';
-  if (lead.score >= 6) return 'Warm lead - nurture today';
-  return 'Follow-up recommended';
+  // High score
+  if (lead.score >= 9) {
+    return `Score ${lead.score * 10} — high-value, prioritize today`;
+  }
+  
+  // Budget confirmed
+  if (budgetStr) {
+    return `Budget ${budgetStr} — send matching properties`;
+  }
+  
+  // Default based on recency
+  if (hoursSinceContact <= 2) {
+    return `Active ${hoursSinceContact}h ago — momentum, keep engaged`;
+  }
+  
+  return `Last contact ${hoursSinceContact}h ago — check in today`;
 };
 
 // Get time ago string
@@ -138,10 +188,10 @@ const getTimeAgo = (dateStr) => {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   
   if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes} min ago`;
-  if (hours < 24) return `${hours} hr ago`;
-  if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
+  if (minutes < 60) return `${minutes}m`;
+  if (hours < 24) return `${hours}h`;
+  if (days === 1) return '1d';
+  return `${days}d`;
 };
 
 // Get avatar color based on name
@@ -184,18 +234,16 @@ export default function LeadInbox() {
     language_preference: "English",
     lead_source: "Walk-in",
     estimated_deal_value: "",
-    property_interests: {
-      location: "",
-      bedrooms: "",
-      budget: "",
-      property_type: ""
-    },
+    property_interests: { location: "", bedrooms: "", budget: "", property_type: "" },
     notes: ""
   });
 
   useEffect(() => {
     loadLeads();
     loadVoiceStats();
+    // Refresh every minute to update countdowns
+    const interval = setInterval(() => setLeads(l => [...l]), 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadLeads = async () => {
@@ -234,17 +282,12 @@ export default function LeadInbox() {
       setLeads([response.data, ...leads]);
       setShowAddDialog(false);
       setNewLead({
-        name: "",
-        phone: "",
-        email: "",
-        language_preference: "English",
-        lead_source: "Walk-in",
-        estimated_deal_value: "",
+        name: "", phone: "", email: "", language_preference: "English",
+        lead_source: "Walk-in", estimated_deal_value: "",
         property_interests: { location: "", bedrooms: "", budget: "", property_type: "" },
         notes: ""
       });
       toast.success(`Lead created with score: ${response.data.score}/10`);
-      
       if (response.data.score > 7) {
         toast.info("Maya voice AI will contact this hot lead shortly", { duration: 5000 });
       }
@@ -256,84 +299,55 @@ export default function LeadInbox() {
   };
 
   // Process and sort leads by priority
-  const processedLeads = leads.map(lead => ({
-    ...lead,
-    priority: calculatePriority(lead),
-    whyNow: getWhyNow(lead),
-    timeAgo: getTimeAgo(lead.updated_at || lead.created_at)
-  })).sort((a, b) => {
-    // Sort by priority level first (P1 > P2 > P3)
-    const priorityOrder = { 'P1': 0, 'P2': 1, 'P3': 2 };
+  const processedLeads = leads.map(lead => {
+    const priority = calculatePriority(lead);
+    return {
+      ...lead,
+      priority,
+      whyNow: getWhyNow(lead, priority),
+      timeAgo: getTimeAgo(lead.updated_at || lead.created_at)
+    };
+  }).sort((a, b) => {
+    // Sort order: NEW > P1 > P2 > P3
+    const priorityOrder = { 'NEW': 0, 'P1': 1, 'P2': 2, 'P3': 3 };
     if (priorityOrder[a.priority.level] !== priorityOrder[b.priority.level]) {
       return priorityOrder[a.priority.level] - priorityOrder[b.priority.level];
     }
-    // Then by score
     return (b.score || 0) - (a.score || 0);
   });
 
-  // Filter leads based on active filter
+  // Filter counts
+  const newCount = processedLeads.filter(l => l.priority.level === 'NEW').length;
+  const urgentCount = processedLeads.filter(l => l.priority.level === 'P1').length;
+  const mayaCount = processedLeads.filter(l => l.maya_call_status === 'completed').length;
+  const viewingCount = processedLeads.filter(l => l.maya_bant?.timeline?.toLowerCase().includes('today')).length;
+  const intlCount = processedLeads.filter(l => !['English', 'Arabic'].includes(l.language_preference)).length;
+  const highBudgetCount = processedLeads.filter(l => l.estimated_deal_value >= 4000000).length;
+
+  // Filter leads
   const getFilteredLeads = () => {
     switch(activeFilter) {
-      case 'urgent':
-        return processedLeads.filter(l => l.priority.level === 'P1');
-      case 'maya':
-        return processedLeads.filter(l => l.maya_call_status === 'completed');
-      case 'viewing':
-        return processedLeads.filter(l => 
-          l.maya_bant?.timeline?.toLowerCase().includes('today') ||
-          l.maya_bant?.timeline?.toLowerCase().includes('viewing')
-        );
-      case 'international':
-        return processedLeads.filter(l => 
-          !['English', 'Arabic'].includes(l.language_preference) ||
-          l.maya_bant?.location?.toLowerCase().includes('india') ||
-          l.maya_bant?.location?.toLowerCase().includes('abroad')
-        );
-      case 'highbudget':
-        return processedLeads.filter(l => l.estimated_deal_value >= 4000000);
-      default:
-        return processedLeads;
+      case 'new': return processedLeads.filter(l => l.priority.level === 'NEW');
+      case 'urgent': return processedLeads.filter(l => l.priority.level === 'P1');
+      case 'maya': return processedLeads.filter(l => l.maya_call_status === 'completed');
+      case 'viewing': return processedLeads.filter(l => l.maya_bant?.timeline?.toLowerCase().includes('today'));
+      case 'international': return processedLeads.filter(l => !['English', 'Arabic'].includes(l.language_preference));
+      case 'highbudget': return processedLeads.filter(l => l.estimated_deal_value >= 4000000);
+      default: return processedLeads;
     }
   };
-
   const filteredLeads = getFilteredLeads();
-  
-  // Calculate urgent count (P1 leads)
-  const urgentCount = processedLeads.filter(l => l.priority.level === 'P1').length;
-  const mayaCalledToday = voiceStats?.total_calls || 0;
-  const mayaQualified = voiceStats?.qualified_interested || 0;
-  const mayaFollowUp = voiceStats?.qualified_callback || 0;
 
   // Check criteria for badges
   const hasCriteria = (lead, type) => {
     const bant = lead.maya_bant || {};
     const interests = lead.property_interests || {};
-    
     switch(type) {
-      case 'budget':
-        return bant.budget || interests.budget || lead.estimated_deal_value > 0;
-      case 'area':
-        return bant.location || interests.location;
-      case 'timeline':
-        return bant.timeline;
-      default:
-        return false;
+      case 'budget': return bant.budget || interests.budget || lead.estimated_deal_value > 0;
+      case 'area': return bant.location || interests.location;
+      case 'timeline': return bant.timeline;
+      default: return false;
     }
-  };
-
-  // Get last message/summary preview
-  const getLastMessage = (lead) => {
-    if (lead.maya_call_summary) {
-      return lead.maya_call_summary.substring(0, 100) + (lead.maya_call_summary.length > 100 ? '...' : '');
-    }
-    if (lead.notes) {
-      return lead.notes.substring(0, 100) + (lead.notes.length > 100 ? '...' : '');
-    }
-    const interests = lead.property_interests || {};
-    if (interests.location || interests.property_type) {
-      return `Looking for ${interests.bedrooms || ''} ${interests.property_type || 'property'} in ${interests.location || 'Dubai'}`;
-    }
-    return 'New lead - awaiting details';
   };
 
   const bgColor = darkMode ? 'bg-[#0B141A]' : 'bg-gray-50';
@@ -344,169 +358,75 @@ export default function LeadInbox() {
 
   return (
     <div className={`min-h-screen ${bgColor} transition-colors duration-300`} ref={containerRef}>
-      {/* Header */}
-      <div className={`sticky top-0 z-20 ${cardBg} border-b ${borderColor} px-4 py-3`}>
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+      {/* Compact Header */}
+      <div className={`sticky top-0 z-20 ${cardBg} border-b ${borderColor} px-4 py-2`}>
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className={`text-xl font-bold ${textColor}`}>Action Queue</h1>
-            <p className={`text-sm ${textMuted}`}>{leads.length} leads</p>
+            <h1 className={`text-lg font-bold ${textColor}`}>Action Queue</h1>
+            <p className={`text-xs ${textMuted}`}>{leads.length} leads</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDarkMode(!darkMode)}
-              className={`rounded-full ${textMuted}`}
-              data-testid="dark-mode-toggle"
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            <Button variant="ghost" size="icon" onClick={() => setDarkMode(!darkMode)} className={`rounded-full h-8 w-8 ${textMuted}`} data-testid="dark-mode-toggle">
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
-                <Button 
-                  data-testid="add-lead-btn"
-                  className="bg-[#00A884] hover:bg-[#00A884]/90 text-white rounded-full"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Lead
+                <Button data-testid="add-lead-btn" className="bg-[#00A884] hover:bg-[#00A884]/90 text-white rounded-full h-8 px-3 text-sm">
+                  <Plus className="w-3 h-3 mr-1" />Add
                 </Button>
               </DialogTrigger>
-              <DialogContent className={`max-w-lg max-h-[90vh] overflow-y-auto ${darkMode ? 'bg-[#1F2C34] text-white border-[#2A3942]' : ''}`}>
-                <DialogHeader>
-                  <DialogTitle className={darkMode ? 'text-white' : ''}>Add New Lead</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Full Name *</Label>
-                      <Input
-                        data-testid="lead-name-input"
-                        placeholder="Ahmed Al Rashid"
-                        value={newLead.name}
-                        onChange={(e) => setNewLead({...newLead, name: e.target.value})}
-                        className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Phone *</Label>
-                      <Input
-                        data-testid="lead-phone-input"
-                        placeholder="+971 50 123 4567"
-                        value={newLead.phone}
-                        onChange={(e) => setNewLead({...newLead, phone: e.target.value})}
-                        className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}
-                      />
-                    </div>
+              <DialogContent className={`max-w-md max-h-[85vh] overflow-y-auto ${darkMode ? 'bg-[#1F2C34] text-white border-[#2A3942]' : ''}`}>
+                <DialogHeader><DialogTitle className={darkMode ? 'text-white' : ''}>Add New Lead</DialogTitle></DialogHeader>
+                <div className="space-y-3 mt-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className={`text-xs ${textMuted}`}>Name *</Label><Input data-testid="lead-name-input" placeholder="Ahmed Al Rashid" value={newLead.name} onChange={(e) => setNewLead({...newLead, name: e.target.value})} className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}/></div>
+                    <div><Label className={`text-xs ${textMuted}`}>Phone *</Label><Input data-testid="lead-phone-input" placeholder="+971 50 123 4567" value={newLead.phone} onChange={(e) => setNewLead({...newLead, phone: e.target.value})} className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}/></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Email *</Label>
-                      <Input
-                        data-testid="lead-email-input"
-                        type="email"
-                        placeholder="ahmed@example.com"
-                        value={newLead.email}
-                        onChange={(e) => setNewLead({...newLead, email: e.target.value})}
-                        className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Deal Value (AED)</Label>
-                      <Input
-                        data-testid="lead-deal-value-input"
-                        type="number"
-                        placeholder="5000000"
-                        value={newLead.estimated_deal_value}
-                        onChange={(e) => setNewLead({...newLead, estimated_deal_value: e.target.value})}
-                        className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className={`text-xs ${textMuted}`}>Email *</Label><Input data-testid="lead-email-input" type="email" placeholder="ahmed@example.com" value={newLead.email} onChange={(e) => setNewLead({...newLead, email: e.target.value})} className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}/></div>
+                    <div><Label className={`text-xs ${textMuted}`}>Deal Value (AED)</Label><Input data-testid="lead-deal-value-input" type="number" placeholder="5000000" value={newLead.estimated_deal_value} onChange={(e) => setNewLead({...newLead, estimated_deal_value: e.target.value})} className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}/></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Language</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className={`text-xs ${textMuted}`}>Language</Label>
                       <Select value={newLead.language_preference} onValueChange={(val) => setNewLead({...newLead, language_preference: val})}>
-                        <SelectTrigger data-testid="lead-language-select" className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent className={darkMode ? 'bg-[#2A3942] border-[#3B4A54]' : ''}>
-                          {["English", "Arabic", "Hindi", "Russian", "Mandarin", "French"].map(lang => (
-                            <SelectItem key={lang} value={lang} className={darkMode ? 'text-white hover:bg-[#3B4A54]' : ''}>{lang}</SelectItem>
-                          ))}
+                          {["English", "Arabic", "Hindi", "Russian", "Mandarin", "French"].map(l => <SelectItem key={l} value={l} className={darkMode ? 'text-white' : ''}>{l}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Source</Label>
+                    <div><Label className={`text-xs ${textMuted}`}>Source</Label>
                       <Select value={newLead.lead_source} onValueChange={(val) => setNewLead({...newLead, lead_source: val})}>
-                        <SelectTrigger data-testid="lead-source-select" className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent className={darkMode ? 'bg-[#2A3942] border-[#3B4A54]' : ''}>
-                          {LEAD_SOURCES.map(src => (
-                            <SelectItem key={src} value={src} className={darkMode ? 'text-white hover:bg-[#3B4A54]' : ''}>{src}</SelectItem>
-                          ))}
+                          {LEAD_SOURCES.map(s => <SelectItem key={s} value={s} className={darkMode ? 'text-white' : ''}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Location</Label>
-                      <Select 
-                        value={newLead.property_interests.location}
-                        onValueChange={(val) => setNewLead({...newLead, property_interests: {...newLead.property_interests, location: val}})}
-                      >
-                        <SelectTrigger data-testid="lead-location-select" className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}>
-                          <SelectValue placeholder="Select area" />
-                        </SelectTrigger>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className={`text-xs ${textMuted}`}>Location</Label>
+                      <Select value={newLead.property_interests.location} onValueChange={(val) => setNewLead({...newLead, property_interests: {...newLead.property_interests, location: val}})}>
+                        <SelectTrigger className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}><SelectValue placeholder="Area" /></SelectTrigger>
                         <SelectContent className={darkMode ? 'bg-[#2A3942] border-[#3B4A54]' : ''}>
-                          {["Palm Jumeirah", "Downtown Dubai", "Dubai Hills", "Dubai Marina", "JBR", "Business Bay"].map(loc => (
-                            <SelectItem key={loc} value={loc} className={darkMode ? 'text-white hover:bg-[#3B4A54]' : ''}>{loc}</SelectItem>
-                          ))}
+                          {["Palm Jumeirah", "Downtown Dubai", "Dubai Hills", "Dubai Marina", "JBR", "Business Bay"].map(l => <SelectItem key={l} value={l} className={darkMode ? 'text-white' : ''}>{l}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <Label className={textMuted}>Property Type</Label>
-                      <Select 
-                        value={newLead.property_interests.property_type}
-                        onValueChange={(val) => setNewLead({...newLead, property_interests: {...newLead.property_interests, property_type: val}})}
-                      >
-                        <SelectTrigger data-testid="lead-property-type-select" className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
+                    <div><Label className={`text-xs ${textMuted}`}>Property Type</Label>
+                      <Select value={newLead.property_interests.property_type} onValueChange={(val) => setNewLead({...newLead, property_interests: {...newLead.property_interests, property_type: val}})}>
+                        <SelectTrigger className={`h-9 ${darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}`}><SelectValue placeholder="Type" /></SelectTrigger>
                         <SelectContent className={darkMode ? 'bg-[#2A3942] border-[#3B4A54]' : ''}>
-                          {["Apartment", "Villa", "Townhouse", "Penthouse", "Studio"].map(type => (
-                            <SelectItem key={type} value={type} className={darkMode ? 'text-white hover:bg-[#3B4A54]' : ''}>{type}</SelectItem>
-                          ))}
+                          {["Apartment", "Villa", "Townhouse", "Penthouse", "Studio"].map(t => <SelectItem key={t} value={t} className={darkMode ? 'text-white' : ''}>{t}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className={textMuted}>Notes</Label>
-                    <Textarea
-                      data-testid="lead-notes-input"
-                      placeholder="e.g., Looking for 3BR, budget 4M AED, viewing tomorrow"
-                      value={newLead.notes}
-                      onChange={(e) => setNewLead({...newLead, notes: e.target.value})}
-                      rows={2}
-                      className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}
-                    />
+                  <div><Label className={`text-xs ${textMuted}`}>Notes (include "urgent", "today" etc. to auto-prioritize)</Label>
+                    <Textarea data-testid="lead-notes-input" placeholder="e.g., Looking immediately for 3BR villa" value={newLead.notes} onChange={(e) => setNewLead({...newLead, notes: e.target.value})} rows={2} className={darkMode ? 'bg-[#2A3942] border-[#3B4A54] text-white' : ''}/>
                   </div>
-                  <Button 
-                    data-testid="submit-lead-btn"
-                    onClick={handleCreateLead} 
-                    disabled={creating}
-                    className="w-full bg-[#00A884] hover:bg-[#00A884]/90 text-white rounded-full"
-                  >
-                    {creating ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scoring with AI...</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 mr-2" />Add & Score Lead</>
-                    )}
+                  <Button data-testid="submit-lead-btn" onClick={handleCreateLead} disabled={creating} className="w-full bg-[#00A884] hover:bg-[#00A884]/90 text-white rounded-full h-9">
+                    {creating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scoring...</> : <><Sparkles className="w-4 h-4 mr-2" />Add & Score</>}
                   </Button>
                 </div>
               </DialogContent>
@@ -515,232 +435,152 @@ export default function LeadInbox() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto pb-24">
-        {/* Urgent Banner */}
-        {urgentCount > 0 && (
-          <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl text-white animate-pulse-slow">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🔥</span>
-              <span className="font-semibold">{urgentCount} lead{urgentCount > 1 ? 's' : ''} need your attention in the next 2 hours</span>
+      <div className="max-w-4xl mx-auto pb-20">
+        {/* Urgent Banner - Only show if there are NEW or P1 leads */}
+        {(newCount > 0 || urgentCount > 0) && (
+          <div className="mx-3 mt-3 p-2.5 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl text-white">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {newCount > 0 && <span>⭐ {newCount} new lead{newCount > 1 ? 's' : ''} — first contact window open</span>}
+              {newCount > 0 && urgentCount > 0 && <span className="opacity-60">•</span>}
+              {urgentCount > 0 && <span>🔥 {urgentCount} urgent</span>}
             </div>
           </div>
         )}
 
         {/* Maya Activity Strip */}
-        {voiceStats && (voiceStats.total_calls > 0 || mayaCalledToday > 0) && (
-          <Link to="/voice-ai" className="block mx-4 mt-3">
-            <div className={`p-3 ${darkMode ? 'bg-[#1F2C34] border-[#2A3942]' : 'bg-white border-gray-200'} border rounded-xl flex items-center justify-between`}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-purple-500" />
-                </div>
-                <span className={`text-sm ${textMuted}`}>
-                  <span className="font-medium text-purple-500">Maya</span> called {mayaCalledToday} leads today • {mayaQualified} qualified • {mayaFollowUp} follow-up needed
+        {voiceStats && voiceStats.total_calls > 0 && (
+          <Link to="/voice-ai" className="block mx-3 mt-2">
+            <div className={`p-2 ${darkMode ? 'bg-[#1F2C34] border-[#2A3942]' : 'bg-white border-gray-200'} border rounded-lg flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-purple-500" />
+                <span className={`text-xs ${textMuted}`}>
+                  <span className="text-purple-500 font-medium">Maya</span> {voiceStats.total_calls} calls • {voiceStats.qualified_interested} qualified
                 </span>
               </div>
-              <ChevronRight className={`w-4 h-4 ${textMuted}`} />
+              <ChevronRight className={`w-3 h-3 ${textMuted}`} />
             </div>
           </Link>
         )}
 
-        {/* Filter Pills */}
-        <div className="px-4 mt-4 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-2 pb-2">
+        {/* Filter Pills with counts */}
+        <div className="px-3 mt-3 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1.5 pb-2">
             {[
               { id: 'all', label: 'All', count: processedLeads.length },
-              { id: 'urgent', label: '🔥 Urgent', count: processedLeads.filter(l => l.priority.level === 'P1').length },
-              { id: 'maya', label: '🤖 Maya Called', count: processedLeads.filter(l => l.maya_call_status === 'completed').length },
-              { id: 'viewing', label: '📅 Viewing Today', count: processedLeads.filter(l => l.maya_bant?.timeline?.toLowerCase().includes('today')).length },
-              { id: 'international', label: '🌍 International', count: processedLeads.filter(l => !['English', 'Arabic'].includes(l.language_preference)).length },
-              { id: 'highbudget', label: '💰 4M+ Budget', count: processedLeads.filter(l => l.estimated_deal_value >= 4000000).length },
+              { id: 'new', label: '⭐ New', count: newCount },
+              { id: 'urgent', label: '🔥 Urgent', count: urgentCount },
+              { id: 'maya', label: '🤖 Maya', count: mayaCount },
+              { id: 'viewing', label: '📅 Today', count: viewingCount },
+              { id: 'international', label: '🌍 Intl', count: intlCount },
+              { id: 'highbudget', label: '💰 4M+', count: highBudgetCount },
             ].map(filter => (
               <button
                 key={filter.id}
                 onClick={() => setActiveFilter(filter.id)}
                 data-testid={`filter-${filter.id}`}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                   activeFilter === filter.id
                     ? 'bg-[#00A884] text-white'
-                    : darkMode 
-                      ? 'bg-[#2A3942] text-gray-300 hover:bg-[#3B4A54]' 
-                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    : darkMode ? 'bg-[#2A3942] text-gray-300' : 'bg-white text-gray-600 border border-gray-200'
                 }`}
               >
-                {filter.label} {filter.count > 0 && <span className="ml-1 opacity-75">({filter.count})</span>}
+                {filter.label} ({filter.count})
               </button>
             ))}
           </div>
         </div>
 
-        {/* Lead Cards */}
-        <div className="mt-4 space-y-3 px-4">
+        {/* Compact Lead Cards */}
+        <div className="mt-2 space-y-1.5 px-3">
           {loading ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} className={`${cardBg} rounded-2xl p-4 animate-pulse`}>
-                <div className="flex gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gray-300" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-300 rounded w-1/3" />
-                    <div className="h-3 bg-gray-200 rounded w-2/3" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+            [...Array(4)].map((_, i) => (
+              <div key={i} className={`${cardBg} rounded-xl p-3 animate-pulse`}>
+                <div className="flex gap-3 items-center">
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-gray-300 rounded w-1/3" />
+                    <div className="h-2.5 bg-gray-200 rounded w-2/3" />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full" />
+                    <div className="w-8 h-8 bg-gray-200 rounded-full" />
                   </div>
                 </div>
               </div>
             ))
           ) : filteredLeads.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl p-8 text-center`}>
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-gray-400" />
-              </div>
-              <p className={`font-medium ${textColor}`}>No leads in this view</p>
-              <p className={`text-sm ${textMuted} mt-1`}>Try a different filter or add a new lead</p>
+            <div className={`${cardBg} rounded-xl p-6 text-center`}>
+              <MessageSquare className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className={`text-sm font-medium ${textColor}`}>No leads in this view</p>
             </div>
           ) : (
             filteredLeads.map((lead, index) => (
               <div
                 key={lead.id}
                 data-testid={`lead-card-${lead.id}`}
-                className={`${cardBg} rounded-2xl overflow-hidden border-l-4 ${lead.priority.borderColor} shadow-sm hover:shadow-md transition-all duration-300 animate-slide-up`}
-                style={{ animationDelay: `${index * 50}ms` }}
+                className={`${cardBg} rounded-xl overflow-hidden border-l-4 ${lead.priority.borderColor} shadow-sm hover:shadow-md transition-all duration-200 animate-slide-up`}
+                style={{ animationDelay: `${index * 30}ms` }}
               >
-                {/* Card Header */}
-                <div className="p-4 pb-2">
-                  <div className="flex items-start gap-3">
-                    {/* Avatar */}
-                    <div className={`w-12 h-12 rounded-full ${getAvatarColor(lead.name)} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
-                      {getInitials(lead.name)}
+                {/* Single Row Card - Avatar + Info + Actions inline */}
+                <div className="p-3 flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(lead.name)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                    {getInitials(lead.name)}
+                  </div>
+                  
+                  {/* Info - Compact */}
+                  <div className="flex-1 min-w-0">
+                    {/* Row 1: Priority + Name + Time */}
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-bold ${lead.priority.textColor}`}>{lead.priority.icon} {lead.priority.level}</span>
+                      <Link to={`/leads/${lead.id}`} className={`font-semibold text-sm ${textColor} hover:underline truncate`}>{lead.name}</Link>
+                      <span className={`text-[10px] ${textMuted} ml-auto flex-shrink-0`}>{lead.timeAgo}</span>
                     </div>
                     
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`font-bold ${lead.priority.textColor}`}>{lead.priority.icon} {lead.priority.level}</span>
-                        <span className="text-gray-400">•</span>
-                        <Link to={`/leads/${lead.id}`} className={`font-semibold ${textColor} hover:underline truncate`}>
-                          {lead.name}
-                        </Link>
-                        <span className={`text-xs ${textMuted} ml-auto flex-shrink-0`}>{lead.timeAgo}</span>
-                      </div>
-                      
-                      {/* Last Message Preview */}
-                      <div className={`mt-1 text-sm ${textMuted} line-clamp-2`}>
-                        {lead.maya_call_status === 'completed' ? (
-                          <span className="flex items-center gap-1">
-                            <Bot className="w-3 h-3 text-purple-500" />
-                            <span className="text-purple-500 font-medium">Maya Voice Call Completed</span>
-                          </span>
-                        ) : (
-                          <span className="flex items-start gap-1">
-                            <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                            "{getLastMessage(lead)}"
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Score + Criteria Badges */}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className={`text-sm font-bold ${lead.score >= 8 ? 'text-red-500' : lead.score >= 6 ? 'text-amber-500' : 'text-blue-500'}`}>
-                          Score: {lead.score * 10}
-                        </span>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-xs">
-                          Budget {hasCriteria(lead, 'budget') ? '✅' : '⏳'}
-                        </span>
-                        <span className="text-xs">
-                          Area {hasCriteria(lead, 'area') ? '✅' : '⏳'}
-                        </span>
-                        {hasCriteria(lead, 'timeline') && (
-                          <span className="text-xs">
-                            Timeline ✅
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* WHY NOW - Most Important */}
-                      <div className={`mt-2 py-1.5 px-3 rounded-lg ${darkMode ? 'bg-[#2A3942]' : 'bg-amber-50'} inline-block`}>
-                        <span className={`text-xs font-bold ${darkMode ? 'text-amber-400' : 'text-amber-700'}`}>
-                          WHY NOW: {lead.whyNow}
-                        </span>
-                      </div>
+                    {/* Row 2: Score + Criteria */}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`text-xs font-semibold ${lead.score >= 8 ? 'text-red-500' : lead.score >= 6 ? 'text-amber-500' : 'text-blue-500'}`}>
+                        {lead.score * 10}
+                      </span>
+                      <span className={`text-[10px] ${textMuted}`}>•</span>
+                      <span className="text-[10px]">{hasCriteria(lead, 'budget') ? '💰' : '○'}</span>
+                      <span className="text-[10px]">{hasCriteria(lead, 'area') ? '📍' : '○'}</span>
+                      <span className="text-[10px]">{hasCriteria(lead, 'timeline') ? '⏰' : '○'}</span>
+                      {lead.maya_call_status === 'completed' && <span className="text-[10px]">🤖</span>}
+                    </div>
+                    
+                    {/* Row 3: WHY NOW */}
+                    <div className={`mt-1 text-[11px] font-semibold ${lead.priority.level === 'NEW' ? 'text-yellow-600' : darkMode ? 'text-amber-400' : 'text-amber-700'} truncate`}>
+                      {lead.whyNow}
                     </div>
                   </div>
-                </div>
-                
-                {/* Action Buttons */}
-                <div className={`px-4 py-3 flex gap-2 border-t ${borderColor} overflow-x-auto`}>
-                  {lead.maya_call_status === 'completed' && lead.maya_recording_url ? (
-                    <>
-                      <a href={lead.maya_recording_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-purple-500/50 text-purple-400 hover:bg-purple-500/20' : 'border-purple-200 text-purple-600 hover:bg-purple-50'}`}
-                          data-testid={`listen-${lead.id}`}
-                        >
-                          <Headphones className="w-4 h-4 mr-1" />
-                          Listen
+                  
+                  {/* Action Buttons - Icon only on mobile-ish, compact */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <a href={`tel:${lead.phone}`}>
+                      <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${darkMode ? 'hover:bg-green-500/20 text-green-400' : 'hover:bg-green-50 text-green-600'}`} data-testid={`call-${lead.id}`}>
+                        <Phone className="w-4 h-4" />
+                      </Button>
+                    </a>
+                    <a href={`https://wa.me/${lead.phone?.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${darkMode ? 'hover:bg-[#25D366]/20 text-[#25D366]' : 'hover:bg-[#25D366]/10 text-[#25D366]'}`} data-testid={`whatsapp-${lead.id}`}>
+                        <MessageSquare className="w-4 h-4" />
+                      </Button>
+                    </a>
+                    {lead.maya_call_status === 'completed' && lead.maya_recording_url ? (
+                      <a href={lead.maya_recording_url} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${darkMode ? 'hover:bg-purple-500/20 text-purple-400' : 'hover:bg-purple-50 text-purple-600'}`} data-testid={`listen-${lead.id}`}>
+                          <Headphones className="w-4 h-4" />
                         </Button>
                       </a>
-                      <Link to={`/leads/${lead.id}`} className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-blue-500/50 text-blue-400 hover:bg-blue-500/20' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}
-                          data-testid={`send-info-${lead.id}`}
-                        >
-                          <Send className="w-4 h-4 mr-1" />
-                          Send Info
+                    ) : (
+                      <Link to={`/leads/${lead.id}`}>
+                        <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${darkMode ? 'hover:bg-amber-500/20 text-amber-400' : 'hover:bg-amber-50 text-amber-600'}`} data-testid={`view-${lead.id}`}>
+                          <Calendar className="w-4 h-4" />
                         </Button>
                       </Link>
-                      <a href={`https://wa.me/${lead.phone?.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-green-500/50 text-green-400 hover:bg-green-500/20' : 'border-green-200 text-green-600 hover:bg-green-50'}`}
-                          data-testid={`reply-${lead.id}`}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          Reply
-                        </Button>
-                      </a>
-                    </>
-                  ) : (
-                    <>
-                      <a href={`tel:${lead.phone}`} className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-green-500/50 text-green-400 hover:bg-green-500/20' : 'border-green-200 text-green-600 hover:bg-green-50'}`}
-                          data-testid={`call-${lead.id}`}
-                        >
-                          <Phone className="w-4 h-4 mr-1" />
-                          Call
-                        </Button>
-                      </a>
-                      <a href={`https://wa.me/${lead.phone?.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-[#25D366]/50 text-[#25D366] hover:bg-[#25D366]/20' : 'border-[#25D366]/30 text-[#25D366] hover:bg-[#25D366]/10'}`}
-                          data-testid={`whatsapp-${lead.id}`}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          WhatsApp
-                        </Button>
-                      </a>
-                      <Link to={`/leads/${lead.id}`} className="flex-1 min-w-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full rounded-full ${darkMode ? 'border-amber-500/50 text-amber-400 hover:bg-amber-500/20' : 'border-amber-200 text-amber-600 hover:bg-amber-50'}`}
-                          data-testid={`schedule-${lead.id}`}
-                        >
-                          <Calendar className="w-4 h-4 mr-1" />
-                          Schedule
-                        </Button>
-                      </Link>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -748,52 +588,14 @@ export default function LeadInbox() {
         </div>
       </div>
 
-      {/* Custom CSS for animations */}
       <style>{`
         @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
-        @keyframes pulse-slow {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.85;
-          }
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.4s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 2s ease-in-out infinite;
-        }
-        
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out forwards; opacity: 0; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
