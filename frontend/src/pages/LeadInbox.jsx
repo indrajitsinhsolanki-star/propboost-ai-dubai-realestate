@@ -566,9 +566,9 @@ export default function LeadInbox() {
                   {/* Info - Compact */}
                   <div className="flex-1 min-w-0">
                     {/* Row 1: Priority + Name + Time */}
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-xs font-bold ${lead.priority.textColor}`}>{lead.priority.icon} {lead.priority.level}</span>
-                      <Link to={`/leads/${lead.id}`} className={`font-semibold text-sm ${textColor} hover:underline truncate`}>{lead.name}</Link>
+                    <div className="flex items-start gap-1.5 flex-wrap sm:flex-nowrap">
+                      <span className={`text-xs font-bold ${lead.priority.textColor} flex-shrink-0`}>{lead.priority.icon} {lead.priority.level}</span>
+                      <Link to={`/leads/${lead.id}`} className={`font-semibold text-sm ${textColor} hover:underline break-words sm:truncate`}>{lead.name}</Link>
                       <span className={`text-[10px] ${textMuted} ml-auto flex-shrink-0`}>{lead.timeAgo}</span>
                     </div>
                     
