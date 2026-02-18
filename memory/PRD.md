@@ -6,6 +6,34 @@ PropBoost AI is a B2B SaaS platform for Dubai real estate agents providing AI-po
 ## Original Problem Statement
 Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent brokerages) handling 10-50 transactions/year. Must support Arabic/English/Hindi/Russian/Mandarin/French and comply with RERA/DLD regulations.
 
+## Critical Bug Fixes (Feb 18, 2026)
+
+### Auth Redirect Loop Fix - RESOLVED ✅
+**Bug Description:** Authentication redirect loop prevented new users from accessing the dashboard after signup/login. Users would briefly see the dashboard then immediately redirect back to /login.
+
+**Root Cause:** Race condition where `navigate('/dashboard')` was called immediately after the login/signup API call returned, but React state hadn't propagated yet. When `ProtectedRoute` checked the user state, it was still `null`, causing a redirect back to `/login`.
+
+**Fix Applied:**
+1. **App.js AuthProvider:** Removed `setTimeout` race condition. `login`/`signup` functions now set `localStorage` FIRST before state changes
+2. **Login.jsx:** Added `useEffect` to watch `user` state. Navigation only happens AFTER user is confirmed to be set
+3. **Signup.jsx:** Same pattern - `useEffect` watches user state before navigating
+4. **AuthCallback.jsx:** OAuth callback uses `useEffect` to wait for user state before redirecting
+
+**Files Changed:**
+- `/app/frontend/src/App.js` (lines 197-313)
+- `/app/frontend/src/pages/Login.jsx`
+- `/app/frontend/src/pages/Signup.jsx`
+- `/app/frontend/src/pages/AuthCallback.jsx`
+
+**Test Results:** All 6 scenarios passed (tested Feb 18, 2026):
+- ✅ New email signup → lands on /dashboard
+- ✅ Existing email login → lands on /dashboard
+- ✅ Google OAuth buttons present and functional
+- ✅ Unauthenticated user → redirects to /login
+- ✅ Logged-in user on /login → redirects to /dashboard
+
+**Security Fix:** Also fixed `/api/auth/me` endpoint to exclude `password_hash` from response.
+
 ## User Personas
 1. **Solo Agent** - Individual agent managing 50-100 leads/month
 2. **Team Lead** - Manages 3-5 agents, needs pipeline visibility
