@@ -1,0 +1,181 @@
+<analysis>**original_problem_statement:**
+The user wants to build PropBoost AI, a B2B SaaS platform for Dubai real estate agents. This AI-powered suite is designed to help agents manage leads, generate multilingual content, and automate follow-ups.
+
+**PRODUCT REQUIREMENTS:**
+
+**Phase 1 MVP Scope (Completed):**
+-   **Lead Scoring Engine:** Manually enter leads, which are then scored 1-10 by Claude API.
+-   **Content Generator:** Manually enter property details to generate content in 6 languages (Arabic, English, Hindi, Russian, Mandarin, French).
+-   **Basic Pipeline View:** Kanban board with manual stage updates for deals.
+-   **Simulated Messaging:** UI for WhatsApp/Email with copy to clipboard functionality.
+-   **Agent Approval Workflow:** Agents must approve AI-generated content before it can be used.
+
+**Phase 2 Scope (Partially Implemented):**
+-   **User Authentication:** Implement JWT-based email/password login and Emergent-managed Google OAuth.
+-   **Voice AI Integration (Vapi.ai):** Auto-trigger a qualification call for hot leads (score > 7).
+-   **Analytics:** A dashboard to track Voice AI performance (call volume, qualification rate, etc.) and a lead leaderboard.
+-   **Call Summaries & BANT:** Extract BANT (Budget, Authority, Need, Timeline) data from calls and display it in the UI.
+-   **Compliance & Validation (RERA):** Add a compliance status field and instruct the AI to check against a verified property list.
+-   **Password Reset Flow:** Full implementation for user self-service password resets.
+
+**Backlog:**
+-   **Real Messaging Services:** Integrate Twilio (WhatsApp) and SendGrid (Email).
+-   **Property Portal API Sync:** Automatically sync property listings.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack application with a FastAPI backend and a React frontend. The application has implemented JWT & Google OAuth authentication, a Voice AI integration with Vapi.ai for automated lead qualification calls, and an advanced analytics dashboard for voice AI performance. It also includes a High-Velocity Action Feed for lead management, BANT (Budget, Authority, Need, Timeline) extraction from calls, and a simulated WhatsApp handoff feature. However, a critical authentication bug has been reported, causing an infinite redirect loop for new users and users logging in via incognito/different browsers.
+
+**Last working item**:
+-   **Last item agent was working:** The agent was tasked with fixing two critical authentication bugs reported by the user. The first bug prevents new users who sign up with email/password from logging in. The second bug causes a redirect loop for users signing up with Google OAuth, returning them to the landing page instead of the dashboard.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** both
+-   **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+-   **Issue 1:** Critical Authentication Failures (Priority: P0)
+
+**Issues Detail:**
+-   **Issue 1:**
+    -   **Description:** Users are experiencing a login redirect loop.
+        1.  **New Email Registration:** After signing up with an email and password, users are unable to log in; they are redirected back to the login page.
+        2.  **Google OAuth Sign-Up:** After completing the Google OAuth flow, new users are returned to the landing page instead of the dashboard.
+    -   **Attempted fixes:** The agent previously fixed a similar redirect loop by adding loading state checks and redirecting logged-in users away from public routes in  and . The issue has recurred or a new, related bug has emerged.
+    -   **Next debug checklist:**
+        1.  **Review Auth Middleware ():** Verify that public routes like , , and  are correctly excluded from authentication checks.
+        2.  **Review Frontend Auth Logic ():** Check the  hook and  component. Ensure  state is properly handled before rendering routes or redirecting.
+        3.  **Review Login/Signup Handlers (, ):** Ensure  or session storage is updated **before** the  call is made. The session must be fully established first.
+        4.  **Review Google OAuth Callback ():** Trace the  endpoint. Confirm it correctly creates a user if they don't exist, establishes a session, and returns the token before the frontend redirects.
+        5.  **Test Scenarios:**
+            -   New user signup (email) -> should redirect to dashboard.
+            -   Existing user login (email) -> should reach dashboard.
+            -   New user signup (Google) -> should reach dashboard.
+            -   Existing user login (Google) -> should reach dashboard.
+            -   Unauthenticated user visiting  -> should redirect to login.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical, application-breaking bug. Fixing it is essential for user registration and login, making the platform usable for anyone other than the main admin account.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on other issue:** None. This is the primary blocker.
+
+**In progress Task List**:
+-   **Task 1:** Fix Critical Authentication Bugs (Same as Issue 1 above)
+    -   **Where to resume:** Start by reviewing  and  based on the user's detailed bug report and the debug checklist.
+    -   **What will be achieved with this?** A stable and reliable authentication system for all users.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** None.
+
+**Upcoming and Future Tasks**
+-   **Upcoming Tasks:**
+    -   **P1: Integrate SendGrid for Password Reset Emails:** Replace the manual token delivery in the password reset flow with automated emails. This requires adding SendGrid credentials and updating the backend logic in .
+    -   **P2: RERA 2026 Safe Guard Feature:** Update the Vapi prompt for Maya to cross-reference a lead's property inquiry against a Verified Property List and flag non-verified properties as Awaiting Trakheesi Permit.
+-   **Future Tasks:**
+    -   WhatsApp Business Integration (Pending API approval).
+    -   SendGrid Email Automation for other notifications.
+    -   Property Portal API Sync.
+
+**Completed work in this session**
+-   **Voice AI Migration:** Migrated from Retell AI to Vapi.ai due to calling restrictions.
+-   **Voice AI Dashboard:** Created a new page () with stats: Total Calls, Answered Rate, Qualification Rate, Avg. Talk Time, AI Confidence, and call outcomes.
+-   **Password Reset Flow:** Implemented frontend pages (, ) and backend endpoints (, ).
+-   **BANT Call Summary:** Implemented logic to extract BANT data from Vapi webhooks and display it in a formatted card on the  page.
+-   **AI Confidence Score:** Added logic to calculate and display an AI Confidence % on the dashboard and lead detail pages.
+-   **High-Velocity Action Feed:** Replaced the leads table with a new  component, showing a prioritized queue with badges and quick actions.
+-   **WhatsApp Handoff Simulation:** Added a Send to WhatsApp button on the lead detail page that opens a dialog with a pre-formatted message.
+-   **Compliance Field:** Added a  field to the lead model and a RERA: verified badge to the UI.
+-   **Auth Bug Fix (Initial):** Previously resolved an infinite redirect loop by improving loading state checks in .
+
+**Earlier issues found/mentioned but not fixed**
+None.
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork:** An infinite redirect loop on login was fixed previously. A similar, but more extensive, bug has been reported again, affecting all new users (both email and Google OAuth).
+-   **Recurrence count:** 2
+-   **Status:** IN PROGRESS
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frontend:** React, TailwindCSS, Shadcn UI, Recharts
+-   **Backend:** FastAPI, Python
+-   **Database:** MongoDB
+-   **Authentication:** JWT (email/password) & Emergent-managed Google OAuth
+-   **AI/Integrations:**  library for Claude, Vapi.ai for Voice AI.
+
+**key DB schema**
+-   **users:** {user_id, email, name, company_name, password_hash, google_id}
+-   **leads:** {lead_id, name, email, phone, ..., maya_call_status, call_id, recording_url, **call_summary**, **bant_summary**, **ai_confidence**, **compliance_status**}
+-   **voice_calls:** {call_id, lead_id, status, duration, recording_url, transcript, summary, bant, confidence_score, outcome}
+
+**changes in tech stack**
+-   Replaced Retell AI with Vapi.ai for the voice AI integration.
+
+**All files of reference**
+-   : Contains all backend logic, including the new Vapi webhook, voice stats endpoint, and auth logic that needs review.
+-   : Contains the core routing and auth logic that is the likely source of the redirect bug.
+-   : Frontend for email/password login.
+-   : Frontend for new user registration.
+-   : The new analytics dashboard.
+-   : Displays BANT summary and WhatsApp handoff button.
+-   : The new High-Velocity Action Feed.
+-   : The project requirements document.
+
+**Areas that need refactoring**:
+None.
+
+**key api endpoints**
+-   , ,  (Need careful review)
+-   , 
+-   : Handles incoming call data from Vapi.ai.
+-   : Provides data for the Voice AI dashboard.
+-    (CRUD)
+
+**Critical Info for New Agent**
+-   **TOP PRIORITY IS THE AUTH BUG:** The application is functionally unusable for new users due to a critical redirect loop on login/signup. The user has provided a detailed bug report and a clear set of requirements for the fix. You must address this immediately before any other work. This is a recurring issue, so the previous fix in  was insufficient.
+-   **Feature Freeze:** The user previously requested a feature freeze for a demo. While that demo is over, the new priority is stability. Do not add new features until the auth bug is confirmed fixed by the user.
+-   **Vapi.ai is Live:** The voice AI migration is complete and functional. Webhooks are configured to populate call data, including BANT summaries and confidence scores.
+-   **Simulated Handoffs:** The Send to WhatsApp feature is a simulation. It copies a pre-formatted message to the clipboard. The SendGrid integration for password reset emails is also pending.
+
+**documents and test reports created in this job**
+-    (updated with recent features)
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User (Post-Demo):** Asks to focus on Winner Features: Call Summaries and AI Confidence Score. Backlogs other tasks.
+2.  **Agent:** Acknowledges and starts implementing the features.
+3.  **Agent:** Implements BANT summary extraction, confidence score calculation, updates the UI to show these, and creates test data.
+4.  **Agent:** Confirms via screenshots that the Lead Detail page and Voice AI Dashboard are updated and working correctly.
+5.  **Agent:** Updates the PRD and confirms all endpoints are stable.
+6.  **User (Congratulations):** Shares that the demo was a huge success and was highlighted by a moderator in an AI challenge community for its wow factor.
+7.  **Agent:** Congratulates the user and asks for next steps.
+8.  **User (CRITICAL BUG):** Reports an infinite redirect loop for any new user or when using incognito mode. Provides detailed debugging steps for , , , and . Asks for a Hard Refresh Test after the fix.
+9.  **Agent:** Acknowledges the critical bug and starts the investigation.
+10. **User (Urgency):** Re-emphasizes the need to fix the two critical authentication bugs and a related UX routing issue, providing detailed scenarios to test.
+
+**Project Health Check:**
+-   **Broken:** Core authentication for new users (both email and Google OAuth) is broken, causing an infinite redirect loop.
+-   **Mocked:** SendGrid integration for password reset emails; WhatsApp messaging.
+
+**3rd Party Integrations**
+-   **Claude Sonnet 4.5:** Used for lead scoring via . (Uses Emergent LLM Key)
+-   **Emergent-managed Google Auth:** Used for social login. (Currently Bugged)
+-   **Vapi.ai:** Voice AI for lead qualification, integrated with Twilio as the carrier. (Requires User API Keys)
+-   **Twilio:** Used as the telephony carrier for Vapi.ai. (Requires User API Keys)
+-   **SendGrid:** Stubbed for sending emails. (Requires User API Key)
+
+**Testing status**
+-   **Testing agent used after significant changes:** NO (Agent self-tested features, but a critical bug was missed/re-emerged)
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None.
+-   **Known regressions:** A critical authentication redirect loop has resurfaced.
+
+**Credentials to test flow:**
+-   **Admin Email:** 
+-   **Admin Password:** 
+-   **Testing:** Create new accounts to reproduce the bug.
+
+**What agent forgot to execute**
+The agent was in the process of debugging the critical authentication bug when the job was forked. The immediate next step is to follow the user's detailed debugging instructions to fix the redirect loop.</analysis>
