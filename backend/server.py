@@ -1497,6 +1497,8 @@ async def generate_content(request: ContentRequest, user: dict = Depends(require
                 compliance_status="approved" if is_compliant else "flagged",
                 compliance_flags=violations
             )
+            # MULTI-TENANT: Set owner
+            content_obj.owner_id = user["user_id"]
             
             doc = content_obj.model_dump()
             await db.generated_content.insert_one(doc)
@@ -1519,8 +1521,9 @@ async def generate_content(request: ContentRequest, user: dict = Depends(require
 
 @api_router.get("/content/{property_id}")
 async def get_property_content(property_id: str, platform: Optional[str] = None, language: Optional[str] = None, user: dict = Depends(require_auth)):
-    """Get generated content for a property"""
-    query = {"property_id": property_id}
+    """Get generated content for a property - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    query = {"property_id": property_id, "owner_id": user["user_id"]}
     if platform:
         query["platform"] = platform
     if language:
@@ -1531,8 +1534,9 @@ async def get_property_content(property_id: str, platform: Optional[str] = None,
 
 @api_router.put("/content/{content_id}/approve")
 async def approve_content(content_id: str, approval: ContentApproval, user: dict = Depends(require_auth)):
-    """Approve or reject content"""
-    content = await db.generated_content.find_one({"id": content_id}, {"_id": 0})
+    """Approve or reject content - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    content = await db.generated_content.find_one({"id": content_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
     
@@ -1544,7 +1548,7 @@ async def approve_content(content_id: str, approval: ContentApproval, user: dict
         )
     
     result = await db.generated_content.update_one(
-        {"id": content_id},
+        {"id": content_id, "owner_id": user["user_id"]},
         {"$set": {"approved": approval.approved}}
     )
     
@@ -1556,8 +1560,9 @@ async def approve_content(content_id: str, approval: ContentApproval, user: dict
 
 @api_router.post("/whatsapp/generate")
 async def generate_whatsapp(lead_id: str, message_type: str, language: str = "English", user: dict = Depends(require_auth)):
-    """Generate a WhatsApp message for a lead"""
-    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    """Generate a WhatsApp message for a lead - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
