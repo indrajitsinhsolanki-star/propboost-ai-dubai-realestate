@@ -151,6 +151,7 @@ class PropertyCreate(BaseModel):
 class Property(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str = ""  # MULTI-TENANT: User who owns this property
     title: str
     location: str
     bedrooms: int
@@ -172,6 +173,7 @@ class ContentRequest(BaseModel):
 class GeneratedContent(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str = ""  # MULTI-TENANT: User who owns this content
     property_id: str
     platform: str
     language: str
@@ -191,6 +193,7 @@ class ContentApproval(BaseModel):
 class WhatsAppMessage(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str = ""  # MULTI-TENANT: User who owns this message
     lead_id: str
     lead_phone: str = ""  # NEW: Store phone for Twilio
     message: str
@@ -203,6 +206,7 @@ class WhatsAppMessage(BaseModel):
 class EmailMessage(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str = ""  # MULTI-TENANT: User who owns this message
     lead_id: str
     lead_email: str = ""
     subject: str
