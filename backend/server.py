@@ -1575,6 +1575,8 @@ async def generate_whatsapp(lead_id: str, message_type: str, language: str = "En
         language=language,
         message_type=message_type
     )
+    # MULTI-TENANT: Set owner
+    whatsapp_msg.owner_id = user["user_id"]
     
     doc = whatsapp_msg.model_dump()
     await db.whatsapp_messages.insert_one(doc)
@@ -1587,9 +1589,10 @@ async def generate_whatsapp(lead_id: str, message_type: str, language: str = "En
 
 @api_router.put("/whatsapp/{message_id}/approve")
 async def approve_whatsapp(message_id: str, user: dict = Depends(require_auth)):
-    """Approve a WhatsApp message"""
+    """Approve a WhatsApp message - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
     result = await db.whatsapp_messages.update_one(
-        {"id": message_id},
+        {"id": message_id, "owner_id": user["user_id"]},
         {"$set": {"status": "approved"}}
     )
     if result.matched_count == 0:
@@ -1600,8 +1603,9 @@ async def approve_whatsapp(message_id: str, user: dict = Depends(require_auth)):
 
 @api_router.put("/whatsapp/{message_id}/send")
 async def send_whatsapp(message_id: str, user: dict = Depends(require_auth)):
-    """Send WhatsApp message via Twilio API"""
-    msg = await db.whatsapp_messages.find_one({"id": message_id}, {"_id": 0})
+    """Send WhatsApp message via Twilio API - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    msg = await db.whatsapp_messages.find_one({"id": message_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
     
@@ -1626,16 +1630,18 @@ async def send_whatsapp(message_id: str, user: dict = Depends(require_auth)):
 
 @api_router.get("/whatsapp/{lead_id}")
 async def get_lead_messages(lead_id: str, user: dict = Depends(require_auth)):
-    """Get all WhatsApp messages for a lead"""
-    messages = await db.whatsapp_messages.find({"lead_id": lead_id}, {"_id": 0}).to_list(100)
+    """Get all WhatsApp messages for a lead - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    messages = await db.whatsapp_messages.find({"lead_id": lead_id, "owner_id": user["user_id"]}, {"_id": 0}).to_list(100)
     return messages
 
 # ==================== EMAIL MESSAGE ENDPOINTS ====================
 
 @api_router.post("/email/generate")
 async def generate_email(lead_id: str, subject: str, message_type: str, language: str = "English", user: dict = Depends(require_auth)):
-    """Generate an email message for a lead"""
-    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    """Generate an email message for a lead - MULTI-TENANT"""
+    # MULTI-TENANT: Filter by owner_id
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
@@ -1651,6 +1657,8 @@ async def generate_email(lead_id: str, subject: str, message_type: str, language
         language=language,
         message_type=message_type
     )
+    # MULTI-TENANT: Set owner
+    email_msg.owner_id = user["user_id"]
     
     doc = email_msg.model_dump()
     await db.email_messages.insert_one(doc)
