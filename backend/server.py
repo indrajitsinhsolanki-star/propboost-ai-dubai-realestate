@@ -953,8 +953,11 @@ async def root():
 
 @api_router.post("/leads", response_model=Lead)
 async def create_lead(lead_input: LeadCreate, user: dict = Depends(require_auth)):
-    """Create a new lead and score with AI"""
+    """Create a new lead and score with AI - MULTI-TENANT: Lead is owned by current user"""
     lead = Lead(**lead_input.model_dump())
+    
+    # MULTI-TENANT: Set owner to current user
+    lead.owner_id = user["user_id"]
     
     # Score lead with AI
     score_result = await score_lead_with_ai(lead.model_dump())
