@@ -3,22 +3,22 @@ import { useAuth } from "../App";
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
+  Building2, 
   GitBranch,
   Settings,
   LogOut,
   Sparkles,
   BarChart3,
-  Mic
+  Bot
 } from "lucide-react";
 
 const navItems = [
-  { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/", icon: LayoutDashboard, label: "Today" },
   { path: "/leads", icon: Users, label: "Lead Inbox" },
-  { path: "/content", icon: FileText, label: "Content Studio" },
+  { path: "/content", icon: Building2, label: "Properties" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
-  { path: "/voice-ai", icon: Mic, label: "Voice AI" },
+  { path: "/voice-ai", icon: Bot, label: "Maya" },
 ];
 
 export default function Sidebar({ currentPath }) {
