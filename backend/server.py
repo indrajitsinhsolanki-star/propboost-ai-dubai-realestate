@@ -1294,18 +1294,25 @@ def calculate_confidence_score(bant_data: dict, ended_reason: str, duration_seco
 
 @api_router.get("/voice/stats")
 async def get_voice_stats(user: dict = Depends(require_auth)):
-    """Get Voice AI Maya statistics for dashboard"""
+    """Get Voice AI Maya statistics for dashboard - MULTI-TENANT: Only user's own data"""
     try:
+        # MULTI-TENANT: Filter by owner_id
+        user_filter = {"owner_id": user["user_id"]}
+        
         # Total calls made
-        total_calls = await db.leads.count_documents({"maya_call_id": {"$exists": True, "$ne": ""}})
+        total_calls = await db.leads.count_documents({**user_filter, "maya_call_id": {"$exists": True, "$ne": ""}})
         
         # Calls by status
-        calls_initiated = await db.leads.count_documents({"maya_call_status": "initiated"})
-        calls_completed = await db.leads.count_documents({"maya_call_status": "completed"})
-        calls_failed = await db.leads.count_documents({"maya_call_status": "failed"})
+        calls_initiated = await db.leads.count_documents({**user_filter, "maya_call_status": "initiated"})
+        calls_completed = await db.leads.count_documents({**user_filter, "maya_call_status": "completed"})
+        calls_failed = await db.leads.count_documents({**user_filter, "maya_call_status": "failed"})
         
-        # Get call logs for more detailed stats
-        call_logs = await db.voice_call_logs.find({}, {"_id": 0}).to_list(1000)
+        # Get user's lead IDs
+        user_leads = await db.leads.find(user_filter, {"id": 1, "_id": 0}).to_list(10000)
+        user_lead_ids = [l["id"] for l in user_leads]
+        
+        # Get call logs for user's leads only
+        call_logs = await db.voice_call_logs.find({"lead_id": {"$in": user_lead_ids}}, {"_id": 0}).to_list(1000)
         
         # Calculate answered vs not answered
         calls_answered = len([c for c in call_logs if c.get("ended_reason") not in ["no-answer", "busy", "failed", "machine-detected"]])
@@ -1375,9 +1382,13 @@ async def get_voice_stats(user: dict = Depends(require_auth)):
 
 @api_router.get("/voice/call-logs")
 async def get_voice_call_logs(limit: int = 20, user: dict = Depends(require_auth)):
-    """Get recent voice call logs with lead details"""
+    """Get recent voice call logs with lead details - MULTI-TENANT: Only user's own data"""
     try:
-        logs = await db.voice_call_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+        # MULTI-TENANT: Get user's lead IDs first
+        user_leads = await db.leads.find({"owner_id": user["user_id"]}, {"id": 1, "_id": 0}).to_list(10000)
+        user_lead_ids = [l["id"] for l in user_leads]
+        
+        logs = await db.voice_call_logs.find({"lead_id": {"$in": user_lead_ids}}, {"_id": 0}).sort("created_at", -1).to_list(limit)
         
         # Enrich with lead data
         enriched_logs = []
