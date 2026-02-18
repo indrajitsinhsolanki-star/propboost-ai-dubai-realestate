@@ -90,13 +90,15 @@ const calculatePriority = (lead) => {
 };
 
 /**
- * DYNAMIC "WHY NOW" TEXT - References actual lead data
+ * DYNAMIC "WHY NOW" TEXT - Must be UNIQUE and SPECIFIC per lead
+ * Priority order ensures variety - first match wins
  */
 const getWhyNow = (lead, priority) => {
   const createdAt = new Date(lead.created_at);
   const lastContact = lead.updated_at ? new Date(lead.updated_at) : createdAt;
   const now = new Date();
   const minutesSinceCreated = Math.floor((now - createdAt) / (1000 * 60));
+  const hoursSinceCreated = Math.floor(minutesSinceCreated / 60);
   const hoursSinceContact = Math.floor((now - lastContact) / (1000 * 60 * 60));
   const daysSinceContact = Math.floor(hoursSinceContact / 24);
   
@@ -104,76 +106,109 @@ const getWhyNow = (lead, priority) => {
   const bant = lead.maya_bant || {};
   const budget = lead.estimated_deal_value || 0;
   const budgetStr = budget >= 1000000 ? `${(budget/1000000).toFixed(1)}M AED` : budget > 0 ? `${budget.toLocaleString()} AED` : null;
+  const score = lead.score * 10;
   
-  // ⭐ NEW leads - countdown timer
+  // ⭐ NEW leads - countdown timer (highest priority)
   if (priority.level === 'NEW') {
     return `First contact window: ${priority.countdown} mins remaining`;
   }
   
-  // Check for urgent keywords and quote them
-  for (const keyword of URGENT_KEYWORDS) {
-    if (textToCheck.includes(keyword)) {
-      return `Said "${keyword}" — call within 1 hour`;
+  // Perfect score - special callout
+  if (score >= 100) {
+    return `Perfect score — highest priority lead`;
+  }
+  
+  // Check for urgent keywords ONLY if lead was created/updated in last 24 hours
+  if (hoursSinceCreated <= 24 || hoursSinceContact <= 24) {
+    for (const keyword of URGENT_KEYWORDS) {
+      if (textToCheck.includes(keyword)) {
+        return `Said "${keyword}" — respond within 1 hour`;
+      }
     }
   }
   
-  // Viewing scheduled
+  // Viewing scheduled - time sensitive
   if (bant.timeline) {
     const timeline = bant.timeline.toLowerCase();
-    if (timeline.includes('today')) return `Viewing scheduled TODAY — confirm now`;
-    if (timeline.includes('tomorrow')) return `Viewing scheduled tomorrow — confirm now`;
-    if (timeline.includes('2 hr') || timeline.includes('2hr')) return `Viewing in 2 hours — prepare now`;
+    if (timeline.includes('today')) return `Viewing TODAY — confirm immediately`;
+    if (timeline.includes('tomorrow')) return `Viewing tomorrow — send confirmation`;
+    if (timeline.includes('2 hr') || timeline.includes('2hr')) return `Viewing in 2 hours — final prep`;
+    if (timeline.includes('week')) return `Viewing this week — schedule exact time`;
   }
   
-  // Budget confirmed - high value
-  if (budgetStr && budget >= 4000000) {
-    return `Budget confirmed ${budgetStr} — send property options`;
+  // Maya qualified - always highlight this
+  if (lead.maya_call_status === 'completed') {
+    if (lead.maya_confidence_score >= 80) {
+      return `Maya qualified ${lead.maya_confidence_score}% — hot, call now`;
+    }
+    return `Maya qualified this lead — review call summary`;
   }
   
-  // Maya qualified with high confidence
-  if (lead.maya_call_status === 'completed' && lead.maya_confidence_score >= 70) {
-    return `Maya qualified ${lead.maya_confidence_score}% confidence — follow up`;
+  // HIGH BUDGET buyers - revenue priority (before stale contact check)
+  if (budget >= 4000000) {
+    return `High budget ${budgetStr} — revenue priority`;
+  }
+  
+  // No contact warnings - be specific about days
+  if (daysSinceContact >= 10) {
+    return `No contact in ${daysSinceContact} days — going cold fast`;
+  }
+  if (daysSinceContact >= 5) {
+    return `${daysSinceContact} days silent — re-engage today`;
+  }
+  if (daysSinceContact >= 3) {
+    return `${daysSinceContact} days since contact — follow up`;
   }
   
   // Pre-approved buyer
   if (textToCheck.includes('pre-approved') || textToCheck.includes('preapproved')) {
-    return `Pre-approved buyer — ready to close`;
+    return `Pre-approved buyer — ready to transact`;
   }
   
-  // New lead (created < 60 mins)
-  if (minutesSinceCreated <= 60) {
-    return `New lead, ${minutesSinceCreated} mins old — first contact window open`;
-  }
-  
-  // No contact warning
-  if (daysSinceContact >= 5) {
-    return `No contact in ${daysSinceContact} days — going cold, act today`;
-  }
-  if (daysSinceContact >= 3) {
-    return `No contact in ${daysSinceContact} days — needs attention`;
+  // New-ish lead (created < 2 hours)
+  if (minutesSinceCreated <= 120) {
+    return `New lead, ${minutesSinceCreated < 60 ? minutesSinceCreated + ' mins' : Math.floor(minutesSinceCreated/60) + 'h'} old — first contact`;
   }
   
   // International investor
   if (lead.language_preference && !['English', 'Arabic'].includes(lead.language_preference)) {
-    return `International lead (${lead.language_preference}) — time zone sensitive`;
+    return `${lead.language_preference} speaker — time zone sensitive`;
   }
   
-  // High score
-  if (lead.score >= 9) {
-    return `Score ${lead.score * 10} — high-value, prioritize today`;
+  // High score without other signals
+  if (score >= 90) {
+    return `Score ${score} — top tier, prioritize`;
+  }
+  if (score >= 80) {
+    return `Score ${score} — qualified, needs attention`;
   }
   
-  // Budget confirmed
-  if (budgetStr) {
-    return `Budget ${budgetStr} — send matching properties`;
+  // Budget confirmed (lower than 4M)
+  if (budgetStr && budget >= 1000000) {
+    return `Budget ${budgetStr} — send options`;
   }
   
-  // Default based on recency
-  if (hoursSinceContact <= 2) {
-    return `Active ${hoursSinceContact}h ago — momentum, keep engaged`;
+  // Location interest
+  const location = bant.location || lead.property_interests?.location;
+  if (location) {
+    return `Interested in ${location} — match properties`;
   }
   
-  return `Last contact ${hoursSinceContact}h ago — check in today`;
+  // Lead source specific
+  if (lead.lead_source === 'Instagram' || lead.lead_source === 'WhatsApp') {
+    return `${lead.lead_source} lead — quick response expected`;
+  }
+  
+  // Recent activity
+  if (hoursSinceContact <= 4) {
+    return `Active ${hoursSinceContact}h ago — keep momentum`;
+  }
+  if (hoursSinceContact <= 24) {
+    return `Last contact ${hoursSinceContact}h ago — check in`;
+  }
+  
+  // Fallback - use days
+  return `Last activity ${daysSinceContact || '<1'}d ago — review status`;
 };
 
 // Get time ago string
