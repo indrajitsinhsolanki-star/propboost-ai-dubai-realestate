@@ -279,19 +279,42 @@ def decode_jwt_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_current_user(request: Request, credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[dict]:
-    """Get current user from JWT token or session cookie"""
+    """
+    Get current user from JWT token or session token.
+    
+    Auth methods supported:
+    1. JWT Bearer token (preferred - created during login/signup/oauth)
+    2. Session token in Authorization header (legacy OAuth users - will be phased out)
+    3. Session token in cookie (fallback)
+    """
     # Try Authorization header first
     if credentials and credentials.credentials:
+        token = credentials.credentials
+        
+        # Try 1: Decode as JWT token (primary method)
         try:
-            payload = decode_jwt_token(credentials.credentials)
+            payload = decode_jwt_token(token)
             # SECURITY: Exclude password_hash from user data
             user = await db.users.find_one({"user_id": payload["user_id"]}, {"_id": 0, "password_hash": 0})
             if user:
                 return user
         except:
             pass
+        
+        # Try 2: Check if it's a valid session token (for legacy OAuth users)
+        # This handles users who logged in via OAuth before the JWT fix
+        session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
+        if session:
+            expires_at = datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00"))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                # SECURITY: Exclude password_hash from user data
+                user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0, "password_hash": 0})
+                if user:
+                    return user
     
-    # Try session cookie (for Google OAuth)
+    # Try 3: Session cookie (fallback for cookie-based auth)
     session_token = request.cookies.get("session_token")
     if session_token:
         session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
