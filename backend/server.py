@@ -801,13 +801,16 @@ async def get_session_data(request: Request):
                 user_id = user.user_id
                 await db.users.insert_one(user.model_dump())
             
-            # Create session
-            session_token = oauth_data.get("session_token", str(uuid.uuid4()))
-            expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+            # FIX: Create a proper JWT token for OAuth users (same as email/password login)
+            # This allows them to access protected API endpoints
+            user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+            jwt_token = create_jwt_token(user_id, user_doc["email"])
             
+            # Also store session for cookie-based auth (optional fallback)
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
             session = UserSession(
                 user_id=user_id,
-                session_token=session_token,
+                session_token=jwt_token,  # Store JWT as session token
                 expires_at=expires_at
             )
             
@@ -820,11 +823,11 @@ async def get_session_data(request: Request):
             
             await log_activity("user_login", "user", user_id, {"method": "google_oauth"})
             
-            user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+            logging.info(f"OAuth login successful for: {user_doc['email']}")
             
             return {
                 "user": user_doc,
-                "session_token": session_token,
+                "session_token": jwt_token,  # Return JWT token for API access
                 "expires_at": expires_at
             }
     except HTTPException:
