@@ -194,6 +194,18 @@ function AppContent() {
   );
 }
 
+/**
+ * AUTH FIX - CRITICAL: This provider manages authentication state.
+ * 
+ * ROOT CAUSE OF REDIRECT LOOP (Fixed):
+ * - Previously, login/signup functions used setTimeout which caused race conditions
+ * - Navigation happened before React state was propagated, causing redirect loops
+ * 
+ * FIX APPLIED:
+ * 1. login/signup now set state synchronously and return the user data
+ * 2. Login.jsx/Signup.jsx use useEffect to wait for user state before navigating
+ * 3. This ensures navigation only happens AFTER auth state is confirmed
+ */
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('propboost_token'));
@@ -203,17 +215,19 @@ function AuthProvider({ children }) {
 
   useEffect(() => {
     checkAuth();
-  }, [token]);
+  }, []); // Only run on mount, not on token change to avoid loops
 
   const checkAuth = async () => {
-    if (!token) {
+    const storedToken = localStorage.getItem('propboost_token');
+    if (!storedToken) {
       setLoading(false);
       return;
     }
     
     try {
-      const response = await apiWithAuth.getMe();
+      const response = await createApi(storedToken).getMe();
       setUser(response.data);
+      setToken(storedToken);
     } catch (error) {
       console.error("Auth check failed:", error);
       localStorage.removeItem('propboost_token');
@@ -224,38 +238,42 @@ function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * LOGIN FIX: Sets localStorage FIRST, then state. Returns user immediately.
+   * The calling component (Login.jsx) uses useEffect to navigate after user state updates.
+   */
   const login = async (email, password) => {
     const response = await apiWithAuth.login({ email, password });
     const { user: userData, token: newToken } = response.data;
     
-    // Store token first
+    // CRITICAL: Store token in localStorage FIRST before any state changes
     localStorage.setItem('propboost_token', newToken);
     
-    // Update state synchronously to prevent race conditions
+    // Set both token and user state together
     setToken(newToken);
     setUser(userData);
     
-    // Return a promise that resolves after state is updated
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(userData), 100);
-    });
+    // Return user data - component will use useEffect to navigate after state update
+    return userData;
   };
 
+  /**
+   * SIGNUP FIX: Same pattern as login - localStorage first, then state.
+   * Component navigates via useEffect after user state is set.
+   */
   const signup = async (data) => {
     const response = await apiWithAuth.signup(data);
     const { user: userData, token: newToken } = response.data;
     
-    // Store token first
+    // CRITICAL: Store token in localStorage FIRST before any state changes
     localStorage.setItem('propboost_token', newToken);
     
-    // Update state synchronously to prevent race conditions
+    // Set both token and user state together
     setToken(newToken);
     setUser(userData);
     
-    // Return a promise that resolves after state is updated
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(userData), 100);
-    });
+    // Return user data - component will use useEffect to navigate after state update
+    return userData;
   };
 
   const loginWithGoogle = () => {
@@ -264,6 +282,10 @@ function AuthProvider({ children }) {
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
+  /**
+   * OAUTH CALLBACK FIX: Same pattern - localStorage first, then state.
+   * AuthCallback.jsx component handles navigation after state is set.
+   */
   const handleOAuthCallback = async (sessionId) => {
     try {
       const response = await axios.get(`${API}/auth/session`, {
@@ -271,11 +293,13 @@ function AuthProvider({ children }) {
       });
       const { user: userData, session_token } = response.data;
       
-      // Store session token in cookie would be done server-side
-      // For now, we store in localStorage
+      // CRITICAL: Store token in localStorage FIRST
       localStorage.setItem('propboost_token', session_token);
+      
+      // Set state
       setToken(session_token);
       setUser(userData);
+      
       return userData;
     } catch (error) {
       console.error("OAuth callback failed:", error);

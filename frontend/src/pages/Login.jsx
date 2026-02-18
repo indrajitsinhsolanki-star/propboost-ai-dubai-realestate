@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
@@ -8,12 +8,32 @@ import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import { Sparkles, Mail, Lock, Loader2 } from "lucide-react";
 
+/**
+ * LOGIN FIX - CRITICAL:
+ * 
+ * ROOT CAUSE: Previously, navigate() was called immediately after login(),
+ * but React state hadn't propagated yet, causing the ProtectedRoute to
+ * see user as null and redirect back to /login (infinite loop).
+ * 
+ * FIX: Use useEffect to watch for user state changes. Only navigate
+ * to dashboard AFTER the user state is confirmed to be set.
+ * This ensures the auth state is fully propagated before navigation.
+ */
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const loginAttempted = useRef(false);
+
+  // CRITICAL FIX: Navigate to dashboard only AFTER user state is set
+  useEffect(() => {
+    if (user && loginAttempted.current) {
+      // User is now logged in and this was from a login attempt
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,10 +44,12 @@ export default function Login() {
     
     setLoading(true);
     try {
+      loginAttempted.current = true;
       await login(email, password);
       toast.success("Welcome back!");
-      navigate("/");
+      // DO NOT navigate here - useEffect will handle it after state updates
     } catch (error) {
+      loginAttempted.current = false;
       const errorMessage = error.response?.data?.detail || "Login failed";
       toast.error(errorMessage);
       

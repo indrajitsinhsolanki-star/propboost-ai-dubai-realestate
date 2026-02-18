@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
@@ -8,9 +8,20 @@ import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import { Sparkles, Mail, Lock, User, Building2, Phone, Loader2 } from "lucide-react";
 
+/**
+ * SIGNUP FIX - CRITICAL:
+ * 
+ * ROOT CAUSE: Previously, navigate() was called immediately after signup(),
+ * but React state hadn't propagated yet, causing the ProtectedRoute to
+ * see user as null and redirect back to /login (infinite loop).
+ * 
+ * FIX: Use useEffect to watch for user state changes. Only navigate
+ * to dashboard AFTER the user state is confirmed to be set.
+ * This ensures the auth state is fully propagated before navigation.
+ */
 export default function Signup() {
   const navigate = useNavigate();
-  const { signup, loginWithGoogle } = useAuth();
+  const { signup, loginWithGoogle, user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,6 +30,15 @@ export default function Signup() {
     phone: ""
   });
   const [loading, setLoading] = useState(false);
+  const signupAttempted = useRef(false);
+
+  // CRITICAL FIX: Navigate to dashboard only AFTER user state is set
+  useEffect(() => {
+    if (user && signupAttempted.current) {
+      // User is now logged in and this was from a signup attempt
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,10 +53,12 @@ export default function Signup() {
     
     setLoading(true);
     try {
+      signupAttempted.current = true;
       await signup(formData);
       toast.success("Account created successfully!");
-      navigate("/");
+      // DO NOT navigate here - useEffect will handle it after state updates
     } catch (error) {
+      signupAttempted.current = false;
       toast.error(error.response?.data?.detail || "Signup failed");
     } finally {
       setLoading(false);
