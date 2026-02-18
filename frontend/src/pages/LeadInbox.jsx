@@ -470,7 +470,7 @@ export default function LeadInbox() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto pb-20">
+      <div className="max-w-4xl mx-auto pb-28 sm:pb-20">
         {/* Urgent Banner - Only show if there are NEW or P1 leads */}
         {(newCount > 0 || urgentCount > 0) && (
           <div className="mx-3 mt-3 p-2.5 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl text-white">
