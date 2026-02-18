@@ -1086,8 +1086,9 @@ async def delete_lead(lead_id: str, user: dict = Depends(require_auth)):
 
 @api_router.post("/voice/trigger-call")
 async def trigger_voice_call(request: VoiceCallRequest, user: dict = Depends(require_auth)):
-    """Manually trigger Maya voice AI call for a lead"""
-    lead = await db.leads.find_one({"id": request.lead_id}, {"_id": 0})
+    """Manually trigger Maya voice AI call for a lead - MULTI-TENANT: Only for user's own leads"""
+    # MULTI-TENANT: Filter by owner_id
+    lead = await db.leads.find_one({"id": request.lead_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
