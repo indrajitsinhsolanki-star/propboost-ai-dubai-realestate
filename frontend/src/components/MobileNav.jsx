@@ -2,18 +2,17 @@ import { Link } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
+  Building2, 
   GitBranch,
-  BarChart3,
-  Mic
+  Bot
 } from "lucide-react";
 
 const navItems = [
-  { path: "/", icon: LayoutDashboard, label: "Home" },
+  { path: "/", icon: LayoutDashboard, label: "Today" },
   { path: "/leads", icon: Users, label: "Leads" },
-  { path: "/content", icon: FileText, label: "Content" },
+  { path: "/content", icon: Building2, label: "Properties" },
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
-  { path: "/voice-ai", icon: Mic, label: "Maya" },
+  { path: "/voice-ai", icon: Bot, label: "Maya" },
 ];
 
 export default function MobileNav({ currentPath }) {
