@@ -1004,8 +1004,9 @@ async def get_leads(
     lead_source: Optional[str] = None,
     user: dict = Depends(require_auth)
 ):
-    """Get all leads with optional filters"""
-    query = {}
+    """Get all leads with optional filters - MULTI-TENANT: Only returns user's own leads"""
+    # MULTI-TENANT: Filter by owner_id
+    query = {"owner_id": user["user_id"]}
     if stage:
         query["stage"] = stage
     if score_min is not None:
@@ -1028,19 +1029,21 @@ async def get_leads(
 
 @api_router.get("/leads/{lead_id}", response_model=Lead)
 async def get_lead(lead_id: str, user: dict = Depends(require_auth)):
-    """Get a single lead by ID"""
-    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    """Get a single lead by ID - MULTI-TENANT: Only returns if user owns the lead"""
+    # MULTI-TENANT: Filter by owner_id
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
 
 @api_router.put("/leads/{lead_id}", response_model=Lead)
 async def update_lead(lead_id: str, lead_update: LeadUpdate, user: dict = Depends(require_auth)):
-    """Update a lead"""
+    """Update a lead - MULTI-TENANT: Only updates if user owns the lead"""
     update_data = {k: v for k, v in lead_update.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    result = await db.leads.update_one({"id": lead_id}, {"$set": update_data})
+    # MULTI-TENANT: Filter by owner_id
+    result = await db.leads.update_one({"id": lead_id, "owner_id": user["user_id"]}, {"$set": update_data})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Lead not found")
     
@@ -1050,8 +1053,9 @@ async def update_lead(lead_id: str, lead_update: LeadUpdate, user: dict = Depend
 
 @api_router.post("/leads/{lead_id}/rescore", response_model=Lead)
 async def rescore_lead(lead_id: str, user: dict = Depends(require_auth)):
-    """Rescore an existing lead with AI"""
-    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    """Rescore an existing lead with AI - MULTI-TENANT: Only rescores if user owns the lead"""
+    # MULTI-TENANT: Filter by owner_id
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
@@ -1070,8 +1074,9 @@ async def rescore_lead(lead_id: str, user: dict = Depends(require_auth)):
 
 @api_router.delete("/leads/{lead_id}")
 async def delete_lead(lead_id: str, user: dict = Depends(require_auth)):
-    """Delete a lead"""
-    result = await db.leads.delete_one({"id": lead_id})
+    """Delete a lead - MULTI-TENANT: Only deletes if user owns the lead"""
+    # MULTI-TENANT: Filter by owner_id
+    result = await db.leads.delete_one({"id": lead_id, "owner_id": user["user_id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Lead not found")
     await log_activity("lead_deleted", "lead", lead_id, {}, user.get("user_id", ""))
