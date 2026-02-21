@@ -79,7 +79,12 @@ export default function DocumentStatusPanel({ leadId, onUpdate }) {
   }
 
   if (!docStatus?.exists) {
-    return null;
+    return (
+      <div className="text-center py-4 text-gray-500">
+        <p className="text-sm">No documents requested yet.</p>
+        <p className="text-xs mt-1">Click "Request Docs" to start the document collection process.</p>
+      </div>
+    );
   }
 
   const { requested_docs = [], received_docs = [], status } = docStatus;
