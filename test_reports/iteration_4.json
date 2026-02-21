@@ -1,0 +1,121 @@
+{
+  "summary": "WhatsApp Document Collection Feature (Feature 1) - ALL TESTS PASSED. Comprehensive testing of document request, tracking, and badge display functionality completed successfully. Backend APIs (10/10 tests) and Frontend UI verified working correctly.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard charts",
+        "issues": ["Console warning about chart dimensions (width/height -1) - cosmetic only, doesn't affect functionality"]
+      }
+    ]
+  },
+  
+  "passed_tests": [
+    "BACKEND: POST /api/leads/{lead_id}/documents/request - Creates document request with owner_id",
+    "BACKEND: GET /api/leads/{lead_id}/documents - Returns document status with exists flag",
+    "BACKEND: PATCH /api/leads/{lead_id}/documents/update - Updates received docs and status",
+    "BACKEND: Document status changes: pending → partial → complete",
+    "BACKEND: Multi-tenancy isolation - other users cannot access lead's documents (404)",
+    "BACKEND: Activity logging for document requests",
+    "BACKEND: Badge display data (received_count/requested_count) correct",
+    "BACKEND: High-score lead qualification check (score >= 6.5)",
+    "BACKEND: Low-score lead correctly does not qualify",
+    "BACKEND: Document labels mapping (passport_copy → 'Passport Copy')",
+    "FRONTEND: Request Docs button NOT visible on low-score leads (6/34 leads without button)",
+    "FRONTEND: Request Docs button IS visible on qualified leads (28/34 leads with button)",
+    "FRONTEND: DocumentRequestPanel opens with document checkboxes",
+    "FRONTEND: WhatsApp wa.me link generated with correct phone and message",
+    "FRONTEND: Lead name auto-filled in document request message ('Hi Ahmed! 👋')",
+    "FRONTEND: Mark as Sent button appears after WhatsApp opened",
+    "FRONTEND: Mark as Sent logs activity with timestamp (toast: 'Document request logged successfully!')",
+    "FRONTEND: Document status badge updates immediately (0/2 → 1/2 received)",
+    "FRONTEND: DocumentStatusPanel shows in LeadDetail for qualified leads",
+    "FRONTEND: Transaction Documents section hidden for low-score leads"
+  ],
+
+  "feature_verification": {
+    "request_docs_button_visibility": {
+      "requirement": "Only show for leads with score > 65 OR status = Qualified",
+      "implementation": "Line 645-668 in LeadInbox.jsx checks (lead.score * 10 > 65 || ['qualified', 'viewing', 'negotiation'].includes(lead.stage))",
+      "verified": true,
+      "evidence": "28 of 34 leads show button, 6 low-score leads do not"
+    },
+    "document_status_badge": {
+      "requirement": "'📎 2/3 docs received' in orange or '📎 All docs received ✅' in green",
+      "implementation": "Lines 624-635 in LeadInbox.jsx render badge based on docStatuses[lead.id]",
+      "verified": true,
+      "evidence": "Badge correctly shows '📎 0/2 received' then '📎 1/2 received' after marking"
+    },
+    "document_status_panel": {
+      "requirement": "DocumentStatusPanel shown in LeadDetail page",
+      "implementation": "Lines 667-695 in LeadDetail.jsx conditionally renders DocumentStatusPanel",
+      "verified": true,
+      "evidence": "Transaction Documents section visible with 'Document Status' heading and checkboxes"
+    },
+    "mark_as_sent_logging": {
+      "requirement": "Clicking 'Mark as Sent' logs activity with timestamp",
+      "implementation": "DocumentRequestPanel.jsx handleMarkAsSent calls api.requestDocuments which logs activity",
+      "verified": true,
+      "evidence": "Toast shows 'Document request logged successfully!' and activity_logs updated"
+    },
+    "whatsapp_link_generation": {
+      "requirement": "WhatsApp wa.me link opens with correct lead name auto-filled",
+      "implementation": "DocumentRequestPanel.jsx generateMessage() uses lead.name?.split(' ')[0]",
+      "verified": true,
+      "evidence": "Message preview shows 'Hi Ahmed! 👋' and link opens to wa.me with encoded message"
+    },
+    "multi_tenancy": {
+      "requirement": "Document endpoints filter by owner_id",
+      "implementation": "server.py lines 1909, 1953, 2011 check owner_id in queries",
+      "verified": true,
+      "evidence": "Other user gets 404 when trying to access lead's documents"
+    }
+  },
+  
+  "mocked_apis": {
+    "whatsapp": "WhatsApp integration uses wa.me deep links (MOCKED - not actual WhatsApp Business API)",
+    "note": "This is expected behavior per requirements - uses browser deep links to open WhatsApp app"
+  },
+  
+  "test_report_links": [
+    "/app/backend/tests/test_document_collection.py",
+    "/app/test_reports/pytest/document_collection_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "Document collection feature is well-implemented with proper multi-tenancy support",
+    "Score visibility logic correctly handles both score threshold (65) and stage qualification",
+    "Activity logging provides audit trail for compliance",
+    "DocumentStatusPanel properly shows empty state and updates reactively"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_document_collection.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (10/10 pytest tests passed)",
+    "frontend": "100% (All 10 UI verifications passed)"
+  },
+  
+  "test_credentials": {
+    "email": "indrajitsinh.solanki@gmail.com",
+    "password": "PropBoost123!"
+  },
+  
+  "seed_data_creation": "Created test leads during pytest (TEST_DOC_ prefix) - auto-cleaned after tests",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "WhatsApp Document Collection feature is fully functional. Key test data: Lead 'Ahmed Al Maktoum' has document requests with 1/2 docs received. The feature correctly shows/hides based on lead score (65 threshold) or stage qualification. wa.me deep links work correctly for WhatsApp integration."
+}
