@@ -217,6 +217,37 @@ class EmailMessage(BaseModel):
     sendgrid_id: str = ""  # NEW: SendGrid message ID
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+# ==================== DOCUMENT COLLECTION MODELS ====================
+
+# Standard UAE property transaction documents
+UAE_DOCUMENT_TYPES = [
+    "passport_copy",
+    "emirates_id", 
+    "visa_copy",
+    "salary_certificate",
+    "bank_statement",
+    "proof_of_address"
+]
+
+class DocumentRequestCreate(BaseModel):
+    requested_docs: List[str]  # List of document type IDs
+    message: str = ""  # Custom WhatsApp message
+
+class DocumentRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str = ""  # MULTI-TENANT
+    lead_id: str
+    requested_docs: List[str] = []  # ["passport_copy", "emirates_id", ...]
+    received_docs: List[str] = []   # Documents marked as received
+    status: str = "pending"  # pending/partial/complete
+    message_sent: str = ""  # The WhatsApp message that was sent
+    requested_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class DocumentUpdateRequest(BaseModel):
+    received_docs: List[str]  # Updated list of received documents
+
 # ==================== VOICE AI MODELS ====================
 
 class VoiceCallRequest(BaseModel):
