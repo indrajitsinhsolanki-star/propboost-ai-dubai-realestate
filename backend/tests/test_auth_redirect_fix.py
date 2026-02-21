@@ -15,7 +15,7 @@ import uuid
 import time
 
 # Get backend URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://propboost-auth-fix.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://propboost-whatsapp.preview.emergentagent.com')
 BASE_URL = BASE_URL.rstrip('/')
 
 
