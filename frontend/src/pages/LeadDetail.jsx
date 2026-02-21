@@ -819,6 +819,14 @@ ${lead.maya_call_summary || "No summary available"}`}
           </Card>
         </div>
       </div>
+
+      {/* Document Request Panel */}
+      <DocumentRequestPanel
+        lead={lead}
+        isOpen={docPanelOpen}
+        onClose={() => setDocPanelOpen(false)}
+        onSuccess={handleDocUpdate}
+      />
     </div>
   );
 }
