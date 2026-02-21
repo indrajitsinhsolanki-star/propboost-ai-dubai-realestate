@@ -2076,6 +2076,46 @@ async def get_dashboard_stats(user: dict = Depends(require_auth)):
         "source_distribution": source_distribution
     }
 
+@api_router.get("/dashboard/transaction-stats")
+async def get_transaction_stats(user: dict = Depends(require_auth)):
+    """Get transaction progress stats (docs, MOUs, payments) - MULTI-TENANT"""
+    user_filter = {"owner_id": user["user_id"]}
+    
+    # Document stats
+    docs_pending = await db.document_requests.count_documents({**user_filter, "status": "pending"})
+    docs_partial = await db.document_requests.count_documents({**user_filter, "status": "partial"})
+    docs_complete = await db.document_requests.count_documents({**user_filter, "status": "complete"})
+    
+    # MOU stats (will be added in Feature 2)
+    mous_pending = 0
+    mous_confirmed = 0
+    
+    # Payment stats (will be added in Feature 3)
+    payments_pending = 0
+    
+    # Deals closed this month
+    start_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    deals_closed = await db.leads.count_documents({
+        **user_filter, 
+        "stage": "won",
+        "updated_at": {"$gte": start_of_month}
+    })
+    
+    return {
+        "documents": {
+            "pending": docs_pending + docs_partial,
+            "complete": docs_complete
+        },
+        "mous": {
+            "pending": mous_pending,
+            "confirmed": mous_confirmed
+        },
+        "payments": {
+            "pending": payments_pending
+        },
+        "deals_closed_this_month": deals_closed
+    }
+
 # ==================== ACTIVITY LOG ====================
 
 @api_router.get("/activity-logs")
