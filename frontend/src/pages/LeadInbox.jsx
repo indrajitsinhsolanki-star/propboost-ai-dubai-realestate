@@ -611,8 +611,8 @@ export default function LeadInbox() {
                       <span className={`text-[10px] ${textMuted} ml-auto flex-shrink-0`}>{lead.timeAgo}</span>
                     </div>
                     
-                    {/* Row 2: Score + Criteria */}
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    {/* Row 2: Score + Criteria + Doc Status */}
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className={`text-xs font-semibold ${lead.score >= 8 ? 'text-red-500' : lead.score >= 6 ? 'text-amber-500' : 'text-blue-500'}`}>
                         {lead.score * 10}
                       </span>
@@ -621,6 +621,17 @@ export default function LeadInbox() {
                       <span className="text-[10px]">{hasCriteria(lead, 'area') ? '📍' : '○'}</span>
                       <span className="text-[10px]">{hasCriteria(lead, 'timeline') ? '⏰' : '○'}</span>
                       {lead.maya_call_status === 'completed' && <span className="text-[10px]">🤖</span>}
+                      {/* Document Status Badge */}
+                      {docStatuses[lead.id] && (
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                          docStatuses[lead.id].status === 'complete' 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                        }`}>
+                          📎 {docStatuses[lead.id].received_docs?.length || 0}/{docStatuses[lead.id].requested_docs?.length || 0}
+                          {docStatuses[lead.id].status === 'complete' && ' ✅'}
+                        </span>
+                      )}
                     </div>
                     
                     {/* Row 3: WHY NOW */}
@@ -631,6 +642,30 @@ export default function LeadInbox() {
                   
                   {/* Action Buttons - Icon only on mobile-ish, compact */}
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Request Docs button - only for qualified leads (score > 65) */}
+                    {(lead.score * 10 > 65 || ['qualified', 'viewing', 'negotiation'].includes(lead.stage)) && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className={`h-8 w-8 rounded-full ${
+                          docStatuses[lead.id]?.status === 'complete'
+                            ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-500/20'
+                            : docStatuses[lead.id]
+                              ? 'text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/20'
+                              : 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/20'
+                        }`} 
+                        onClick={() => setDocPanelLead(lead)}
+                        data-testid={`request-docs-${lead.id}`}
+                      >
+                        {docStatuses[lead.id]?.status === 'complete' ? (
+                          <FileCheck className="w-4 h-4" />
+                        ) : docStatuses[lead.id] ? (
+                          <FileText className="w-4 h-4" />
+                        ) : (
+                          <Paperclip className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
                     <a href={`tel:${lead.phone}`}>
                       <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${darkMode ? 'hover:bg-green-500/20 text-green-400' : 'hover:bg-green-50 text-green-600'}`} data-testid={`call-${lead.id}`}>
                         <Phone className="w-4 h-4" />
@@ -661,6 +696,14 @@ export default function LeadInbox() {
           )}
         </div>
       </div>
+
+      {/* Document Request Panel */}
+      <DocumentRequestPanel
+        lead={docPanelLead}
+        isOpen={!!docPanelLead}
+        onClose={() => setDocPanelLead(null)}
+        onSuccess={handleDocRequestSuccess}
+      />
 
       <style>{`
         @keyframes slide-up {
