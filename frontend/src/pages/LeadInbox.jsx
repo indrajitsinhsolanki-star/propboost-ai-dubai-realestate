@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import DocumentRequestPanel from "../components/DocumentRequestPanel";
 import { 
   Plus, 
   Phone, 
@@ -21,7 +22,10 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Star
+  Star,
+  Paperclip,
+  FileCheck,
+  FileText
 } from "lucide-react";
 
 const LEAD_SOURCES = ["Property Finder", "Bayut", "Instagram", "WhatsApp", "Walk-in"];
