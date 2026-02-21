@@ -127,13 +127,13 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - Auto-close lead when cheque cleared (CLOSED WON)
 
 ### Future Roadmap (Backlog)
+- Real messaging service integration (Twilio/SendGrid)
+- Property Portal API Sync (Property Finder, Bayut APIs)
 - WhatsApp Business Integration (Pending API approval from Meta)
 - SendGrid Email Automation (For password reset emails)
-- Property Portal API Sync (Property Finder, Bayut APIs)
 - Social media auto-publishing (Meta Business API)
 - Team collaboration features
 - Advanced reporting dashboard
-- Multi-tenant architecture
 - Real-time notifications
 - Mobile app (React Native)
 
