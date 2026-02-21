@@ -34,8 +34,11 @@ import {
   Target,
   Users,
   Shield,
-  ExternalLink
+  ExternalLink,
+  Paperclip
 } from "lucide-react";
+import DocumentStatusPanel from "../components/DocumentStatusPanel";
+import DocumentRequestPanel from "../components/DocumentRequestPanel";
 
 export default function LeadDetail() {
   const { id } = useParams();
