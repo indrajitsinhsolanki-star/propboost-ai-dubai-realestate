@@ -84,6 +84,12 @@ const createApi = (token) => {
     getVoiceStats: () => axios.get(`${API}/voice/stats`, { headers }),
     getVoiceCallLogs: (limit) => axios.get(`${API}/voice/call-logs?limit=${limit || 20}`, { headers }),
     
+    // Document Collection
+    requestDocuments: (leadId, data) => axios.post(`${API}/leads/${leadId}/documents/request`, data, { headers }),
+    updateDocuments: (leadId, data) => axios.patch(`${API}/leads/${leadId}/documents/update`, data, { headers }),
+    getDocuments: (leadId) => axios.get(`${API}/leads/${leadId}/documents`, { headers }),
+    getTransactionStats: () => axios.get(`${API}/dashboard/transaction-stats`, { headers }),
+    
     // Pipeline
     updatePipelineStage: (leadId, stage, probability) => 
       axios.put(`${API}/pipeline/${leadId}/stage?stage=${stage}${probability !== undefined ? `&probability=${probability}` : ''}`, {}, { headers }),
