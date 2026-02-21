@@ -99,6 +99,33 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 
 ## Prioritized Backlog
 
+### P0 - WhatsApp Transaction Flow (IN PROGRESS)
+
+#### Feature 1: WhatsApp Document Collection - COMPLETED ✅ (Feb 21, 2026)
+- ✅ "Request Docs" button visible only for qualified leads (score > 65 OR stage = qualified/viewing/negotiation)
+- ✅ Document status badge on lead cards: "📎 2/3 docs received" (orange) or "📎 All docs received ✅" (green)
+- ✅ DocumentStatusPanel integrated in LeadDetail page showing checklist of requested/received docs
+- ✅ Clicking received checkbox immediately updates the badge
+- ✅ WhatsApp wa.me link auto-fills lead name in message
+- ✅ "Mark as Sent" logs activity with timestamp
+- ✅ Multi-tenancy: Document endpoints filter by owner_id
+- ✅ Activity logging for document requests and receipts
+- ✅ Auto-progression: All docs received → lead auto-advances to viewing stage
+
+#### Feature 2: MOU Pre-filling + WhatsApp Delivery - UPCOMING (P1)
+- Generate MOU button on leads in negotiation stage
+- Pre-fill form with buyer name, property, agreed price
+- PDF generation from HTML template
+- WhatsApp delivery via wa.me link with PDF attachment
+- MOU status tracking (draft/sent/signed)
+
+#### Feature 3: Booking Cheque Instructions - UPCOMING (P2)  
+- "Send Cheque Instructions" button after MOU signed
+- Auto-fill cheque details (amount, payee - Developer Escrow Account)
+- WhatsApp message with Manager's Cheque instructions
+- Cheque status tracking (instructions_sent/arranged/submitted/cleared)
+- Auto-close lead when cheque cleared (CLOSED WON)
+
 ### Future Roadmap (Backlog)
 - WhatsApp Business Integration (Pending API approval from Meta)
 - SendGrid Email Automation (For password reset emails)
