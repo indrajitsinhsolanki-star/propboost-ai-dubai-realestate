@@ -264,6 +264,8 @@ export default function LeadInbox() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [darkMode, setDarkMode] = useState(false);
   const [voiceStats, setVoiceStats] = useState(null);
+  const [docStatuses, setDocStatuses] = useState({}); // lead_id -> doc status
+  const [docPanelLead, setDocPanelLead] = useState(null); // Lead to show doc panel for
   const containerRef = useRef(null);
   
   const [newLead, setNewLead] = useState({
@@ -285,6 +287,13 @@ export default function LeadInbox() {
     return () => clearInterval(interval);
   }, []);
 
+  // Load document statuses after leads are loaded
+  useEffect(() => {
+    if (leads.length > 0) {
+      loadDocumentStatuses();
+    }
+  }, [leads]);
+
   const loadLeads = async () => {
     try {
       setLoading(true);
@@ -304,6 +313,32 @@ export default function LeadInbox() {
     } catch (error) {
       console.error("Failed to load voice stats");
     }
+  };
+
+  const loadDocumentStatuses = async () => {
+    // Load doc status for qualified leads (score > 65 or stage in qualified+)
+    const qualifiedLeads = leads.filter(l => 
+      l.score * 10 > 65 || ['qualified', 'viewing', 'negotiation', 'closing'].includes(l.stage)
+    );
+    
+    const statuses = {};
+    await Promise.all(
+      qualifiedLeads.map(async (lead) => {
+        try {
+          const response = await api.getDocuments(lead.id);
+          if (response.data?.exists) {
+            statuses[lead.id] = response.data;
+          }
+        } catch (error) {
+          // Ignore errors for individual leads
+        }
+      })
+    );
+    setDocStatuses(statuses);
+  };
+
+  const handleDocRequestSuccess = () => {
+    loadDocumentStatuses();
   };
 
   const handleCreateLead = async () => {
