@@ -1891,6 +1891,137 @@ async def get_source_performance(user: dict = Depends(require_auth)):
     
     return performance
 
+# ==================== DOCUMENT COLLECTION ENDPOINTS ====================
+
+DOCUMENT_LABELS = {
+    "passport_copy": "Passport Copy",
+    "emirates_id": "Emirates ID",
+    "visa_copy": "Visa Copy",
+    "salary_certificate": "Salary Certificate / Bank Statement",
+    "bank_statement": "Bank Statement",
+    "proof_of_address": "Proof of Address"
+}
+
+@api_router.post("/leads/{lead_id}/documents/request")
+async def request_documents(lead_id: str, request: DocumentRequestCreate, user: dict = Depends(require_auth)):
+    """Create a document request for a lead - MULTI-TENANT"""
+    # Verify lead exists and user owns it
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Check if there's already a document request
+    existing = await db.document_requests.find_one({"lead_id": lead_id, "owner_id": user["user_id"]})
+    if existing:
+        # Update existing request
+        await db.document_requests.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "requested_docs": request.requested_docs,
+                "message_sent": request.message,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        doc_request = await db.document_requests.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        # Create new request
+        doc_request = DocumentRequest(
+            lead_id=lead_id,
+            owner_id=user["user_id"],
+            requested_docs=request.requested_docs,
+            message_sent=request.message
+        )
+        await db.document_requests.insert_one(doc_request.model_dump())
+        doc_request = doc_request.model_dump()
+    
+    # Log activity
+    doc_names = [DOCUMENT_LABELS.get(d, d) for d in request.requested_docs]
+    await log_activity(
+        "documents_requested", 
+        "lead", 
+        lead_id, 
+        {"documents": doc_names, "count": len(request.requested_docs)},
+        user.get("user_id", "")
+    )
+    
+    return doc_request
+
+@api_router.patch("/leads/{lead_id}/documents/update")
+async def update_documents(lead_id: str, request: DocumentUpdateRequest, user: dict = Depends(require_auth)):
+    """Update received documents for a lead - MULTI-TENANT"""
+    # Verify lead exists and user owns it
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Get existing document request
+    doc_request = await db.document_requests.find_one({"lead_id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not doc_request:
+        raise HTTPException(status_code=404, detail="No document request found for this lead")
+    
+    # Calculate status
+    requested_count = len(doc_request.get("requested_docs", []))
+    received_count = len(request.received_docs)
+    
+    if received_count >= requested_count:
+        status = "complete"
+    elif received_count > 0:
+        status = "partial"
+    else:
+        status = "pending"
+    
+    # Update document request
+    await db.document_requests.update_one(
+        {"id": doc_request["id"]},
+        {"$set": {
+            "received_docs": request.received_docs,
+            "status": status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # If all docs received, auto-update lead status to next stage if applicable
+    if status == "complete" and lead.get("stage") in ["new", "qualified"]:
+        await db.leads.update_one(
+            {"id": lead_id},
+            {"$set": {
+                "stage": "viewing" if lead.get("stage") == "qualified" else "qualified",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await log_activity("lead_stage_auto_updated", "lead", lead_id, {"new_stage": "viewing", "reason": "all_docs_received"}, user.get("user_id", ""))
+    
+    # Log activity
+    doc_names = [DOCUMENT_LABELS.get(d, d) for d in request.received_docs]
+    await log_activity(
+        "documents_received", 
+        "lead", 
+        lead_id, 
+        {"documents": doc_names, "status": status, "received": received_count, "requested": requested_count},
+        user.get("user_id", "")
+    )
+    
+    updated = await db.document_requests.find_one({"id": doc_request["id"]}, {"_id": 0})
+    return updated
+
+@api_router.get("/leads/{lead_id}/documents")
+async def get_documents(lead_id: str, user: dict = Depends(require_auth)):
+    """Get document request status for a lead - MULTI-TENANT"""
+    # Verify lead exists and user owns it
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    doc_request = await db.document_requests.find_one({"lead_id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not doc_request:
+        return {"exists": False, "lead_id": lead_id}
+    
+    return {
+        "exists": True,
+        **doc_request,
+        "labels": DOCUMENT_LABELS
+    }
+
 # ==================== DASHBOARD STATS ====================
 
 @api_router.get("/dashboard/stats")
