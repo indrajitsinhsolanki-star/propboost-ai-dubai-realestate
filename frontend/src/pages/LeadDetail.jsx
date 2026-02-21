@@ -53,6 +53,13 @@ export default function LeadDetail() {
   const [messageLanguage, setMessageLanguage] = useState("English");
   const [triggeringCall, setTriggeringCall] = useState(false);
   const [whatsappDialog, setWhatsappDialog] = useState(false);
+  const [docPanelOpen, setDocPanelOpen] = useState(false);
+  const [docStatusKey, setDocStatusKey] = useState(0); // For refreshing DocumentStatusPanel
+
+  // Handler to refresh document status when documents are updated
+  const handleDocUpdate = () => {
+    setDocStatusKey(prev => prev + 1);
+  };
 
   // Generate WhatsApp handoff message
   const generateWhatsAppMessage = () => {
