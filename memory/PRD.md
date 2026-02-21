@@ -169,8 +169,8 @@ SENDGRID_API_KEY, SENDGRID_FROM_EMAIL
 - Enterprise: AED 4,999/month (20 agents, unlimited)
 
 ## Next Tasks
-1. Add property portal API integrations (Property Finder, Bayut)
-2. Implement automated follow-up sequences
-3. Add real-time notifications (WebSocket)
-4. Build team collaboration features
-5. Add advanced predictive analytics
+1. **P1: Feature 2 - MOU Pre-filling + WhatsApp Delivery** - Auto-generate pre-filled MOU as PDF and send via WhatsApp
+2. **P2: Feature 3 - Booking Cheque Instructions** - Send Manager's Cheque instructions for deposit (replaced online payment)
+3. Add property portal API integrations (Property Finder, Bayut)
+4. Implement automated follow-up sequences
+5. Add real-time notifications (WebSocket)
