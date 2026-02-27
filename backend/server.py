@@ -747,6 +747,67 @@ async def send_sendgrid_email(to_email: str, subject: str, body: str) -> dict:
         logging.error(f"SendGrid email error: {e}")
         return {"status": "failed", "message_id": "", "message": str(e)}
 
+async def send_twilio_sms(to_phone: str, message: str) -> dict:
+    """Send SMS via Twilio API"""
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+    from_number = os.environ.get('TWILIO_PHONE_NUMBER')
+    
+    if not all([account_sid, auth_token, from_number]):
+        # Return simulated response if credentials not configured
+        return {
+            "status": "simulated",
+            "sid": f"SIM_SMS_{uuid.uuid4().hex[:16]}",
+            "message": "Twilio credentials not configured. SMS simulated."
+        }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+                auth=(account_sid, auth_token),
+                data={
+                    "From": from_number,
+                    "To": to_phone,
+                    "Body": message
+                }
+            )
+            result = response.json()
+            if response.status_code in [200, 201]:
+                return {
+                    "status": "sent",
+                    "sid": result.get("sid", ""),
+                    "message": "SMS sent successfully"
+                }
+            else:
+                return {"status": "failed", "sid": "", "message": result.get("message", "Unknown error")}
+    except Exception as e:
+        logging.error(f"Twilio SMS error: {e}")
+        return {"status": "failed", "sid": "", "message": str(e)}
+
+async def send_simulated_email(to_email: str, subject: str, body: str, lead_name: str = "") -> dict:
+    """Simulated email sending (logs to database)"""
+    email_id = f"EMAIL_{uuid.uuid4().hex[:16]}"
+    
+    # Store in database for tracking
+    await db.simulated_emails.insert_one({
+        "id": email_id,
+        "to_email": to_email,
+        "subject": subject,
+        "body": body,
+        "lead_name": lead_name,
+        "status": "simulated",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    logging.info(f"[SIMULATED EMAIL] To: {to_email}, Subject: {subject}")
+    
+    return {
+        "status": "simulated",
+        "message_id": email_id,
+        "message": "Email simulated (SendGrid not configured). Logged for tracking."
+    }
+
 # ==================== VOICE AI (VAPI) SERVICE ====================
 
 async def trigger_maya_call(lead: dict, language: str = "English") -> dict:
