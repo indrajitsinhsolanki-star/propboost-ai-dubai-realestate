@@ -2124,6 +2124,626 @@ async def get_compliance_audits(limit: int = 50, user: dict = Depends(require_au
     audits = await db.compliance_audits.find({"reviewed_by": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return audits
 
+# ==================== OMNICHANNEL OUTREACH ENDPOINTS ====================
+
+async def execute_outreach_step(sequence_id: str, step: str):
+    """Execute a single outreach step in the sequence"""
+    sequence = await db.outreach_sequences.find_one({"id": sequence_id}, {"_id": 0})
+    if not sequence or sequence["status"] != "active":
+        return
+    
+    lead = await db.leads.find_one({"id": sequence["lead_id"]}, {"_id": 0})
+    if not lead:
+        return
+    
+    logging.info(f"Executing outreach step '{step}' for sequence {sequence_id}")
+    
+    if step == "voice":
+        # Trigger Maya call
+        result = await trigger_maya_call(lead, lead.get("language_preference", "English"))
+        await db.outreach_sequences.update_one(
+            {"id": sequence_id},
+            {"$set": {
+                "voice_status": result["status"],
+                "voice_call_id": result.get("call_id", ""),
+                "current_step": "whatsapp" if result["status"] in ["initiated", "simulated"] else "voice"
+            }}
+        )
+        
+    elif step == "whatsapp":
+        # Send WhatsApp/SMS (using SMS since WhatsApp needs business number)
+        message = f"Hi {lead['name']}, this is Maya from PropBoost AI. We tried reaching you regarding your property inquiry. Please call us back or reply to this message. [AI-Assisted]"
+        result = await send_twilio_sms(lead["phone"], message)
+        await db.outreach_sequences.update_one(
+            {"id": sequence_id},
+            {"$set": {
+                "whatsapp_status": result["status"],
+                "whatsapp_sid": result.get("sid", ""),
+                "current_step": "sms"
+            }}
+        )
+        
+    elif step == "sms":
+        # Send SMS follow-up
+        message = f"PropBoost AI: Hi {lead['name']}, we're still trying to reach you about your Dubai property inquiry. Call us or reply YES for callback. [AI]"
+        result = await send_twilio_sms(lead["phone"], message)
+        await db.outreach_sequences.update_one(
+            {"id": sequence_id},
+            {"$set": {
+                "sms_status": result["status"],
+                "sms_sid": result.get("sid", ""),
+                "current_step": "email"
+            }}
+        )
+        
+    elif step == "email":
+        # Send email follow-up
+        subject = f"PropBoost AI: Following up on your Dubai property inquiry"
+        body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0F172A;">Hello {lead['name']},</h2>
+            <p>We've been trying to reach you regarding your interest in Dubai real estate.</p>
+            <p>Our AI assistant Maya attempted to call you to discuss your property requirements and help you find your perfect property in Dubai.</p>
+            <p><strong>Next Steps:</strong></p>
+            <ul>
+                <li>Reply to this email with your preferred callback time</li>
+                <li>Call us directly</li>
+                <li>Visit our portal to browse properties</li>
+            </ul>
+            <p>Best regards,<br>PropBoost AI Team</p>
+            <p style="font-size: 12px; color: #666;">[AI-Generated Content]</p>
+        </body>
+        </html>
+        """
+        result = await send_simulated_email(lead["email"], subject, body, lead["name"])
+        await db.outreach_sequences.update_one(
+            {"id": sequence_id},
+            {"$set": {
+                "email_status": result["status"],
+                "email_id": result.get("message_id", ""),
+                "current_step": "completed",
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    await log_activity("outreach_step_executed", "sequence", sequence_id, {"step": step})
+
+@api_router.post("/outreach/sequences")
+async def create_outreach_sequence(data: OutreachSequenceCreate, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
+    """Create and start an omnichannel outreach sequence"""
+    # Verify lead exists and belongs to user
+    lead = await db.leads.find_one({"id": data.lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Check if active sequence already exists for this lead
+    existing = await db.outreach_sequences.find_one({
+        "lead_id": data.lead_id,
+        "status": "active"
+    }, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Active sequence already exists for this lead")
+    
+    # Create sequence
+    sequence = OutreachSequence(
+        lead_id=data.lead_id,
+        owner_id=user["user_id"],
+        voice_at=data.voice_at,
+        whatsapp_at=data.whatsapp_at,
+        sms_at=data.sms_at,
+        email_at=data.email_at
+    )
+    
+    # Calculate next action time
+    next_action = datetime.now(timezone.utc) + timedelta(minutes=data.voice_at)
+    sequence.next_action_at = next_action.isoformat()
+    
+    await db.outreach_sequences.insert_one(sequence.model_dump())
+    
+    # Start first step (voice) immediately if voice_at is 0
+    if data.voice_at == 0:
+        background_tasks.add_task(execute_outreach_step, sequence.id, "voice")
+    
+    await log_activity("outreach_sequence_created", "sequence", sequence.id, {
+        "lead_id": data.lead_id
+    }, user["user_id"])
+    
+    return sequence.model_dump()
+
+@api_router.get("/outreach/sequences")
+async def get_outreach_sequences(status: Optional[str] = None, user: dict = Depends(require_auth)):
+    """Get all outreach sequences"""
+    query = {"owner_id": user["user_id"]}
+    if status:
+        query["status"] = status
+    
+    sequences = await db.outreach_sequences.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with lead data
+    for seq in sequences:
+        lead = await db.leads.find_one({"id": seq["lead_id"]}, {"_id": 0, "name": 1, "phone": 1, "email": 1})
+        if lead:
+            seq["lead_name"] = lead.get("name", "Unknown")
+            seq["lead_phone"] = lead.get("phone", "")
+            seq["lead_email"] = lead.get("email", "")
+    
+    return sequences
+
+@api_router.get("/outreach/sequences/{sequence_id}")
+async def get_outreach_sequence(sequence_id: str, user: dict = Depends(require_auth)):
+    """Get a single outreach sequence"""
+    sequence = await db.outreach_sequences.find_one({"id": sequence_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not sequence:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    return sequence
+
+@api_router.post("/outreach/sequences/{sequence_id}/execute-step")
+async def execute_next_step(sequence_id: str, step: str, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
+    """Manually execute next step in sequence"""
+    sequence = await db.outreach_sequences.find_one({"id": sequence_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not sequence:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    
+    if sequence["status"] != "active":
+        raise HTTPException(status_code=400, detail="Sequence is not active")
+    
+    valid_steps = ["voice", "whatsapp", "sms", "email"]
+    if step not in valid_steps:
+        raise HTTPException(status_code=400, detail=f"Invalid step. Must be one of: {valid_steps}")
+    
+    background_tasks.add_task(execute_outreach_step, sequence_id, step)
+    
+    return {"message": f"Executing step: {step}", "sequence_id": sequence_id}
+
+@api_router.put("/outreach/sequences/{sequence_id}/pause")
+async def pause_sequence(sequence_id: str, user: dict = Depends(require_auth)):
+    """Pause an active sequence"""
+    result = await db.outreach_sequences.update_one(
+        {"id": sequence_id, "owner_id": user["user_id"], "status": "active"},
+        {"$set": {"status": "paused"}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Active sequence not found")
+    return {"message": "Sequence paused"}
+
+@api_router.put("/outreach/sequences/{sequence_id}/resume")
+async def resume_sequence(sequence_id: str, user: dict = Depends(require_auth)):
+    """Resume a paused sequence"""
+    result = await db.outreach_sequences.update_one(
+        {"id": sequence_id, "owner_id": user["user_id"], "status": "paused"},
+        {"$set": {"status": "active"}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Paused sequence not found")
+    return {"message": "Sequence resumed"}
+
+@api_router.put("/outreach/sequences/{sequence_id}/cancel")
+async def cancel_sequence(sequence_id: str, user: dict = Depends(require_auth)):
+    """Cancel a sequence"""
+    result = await db.outreach_sequences.update_one(
+        {"id": sequence_id, "owner_id": user["user_id"]},
+        {"$set": {"status": "cancelled", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sequence not found")
+    return {"message": "Sequence cancelled"}
+
+@api_router.get("/outreach/stats")
+async def get_outreach_stats(user: dict = Depends(require_auth)):
+    """Get omnichannel outreach statistics"""
+    user_filter = {"owner_id": user["user_id"]}
+    
+    total_sequences = await db.outreach_sequences.count_documents(user_filter)
+    active_sequences = await db.outreach_sequences.count_documents({**user_filter, "status": "active"})
+    completed_sequences = await db.outreach_sequences.count_documents({**user_filter, "status": "completed"})
+    
+    # Channel success rates
+    voice_success = await db.outreach_sequences.count_documents({**user_filter, "voice_status": {"$in": ["completed", "initiated", "simulated"]}})
+    sms_success = await db.outreach_sequences.count_documents({**user_filter, "sms_status": {"$in": ["sent", "simulated"]}})
+    email_success = await db.outreach_sequences.count_documents({**user_filter, "email_status": {"$in": ["sent", "simulated"]}})
+    
+    return {
+        "total_sequences": total_sequences,
+        "active_sequences": active_sequences,
+        "completed_sequences": completed_sequences,
+        "paused_sequences": await db.outreach_sequences.count_documents({**user_filter, "status": "paused"}),
+        "channel_stats": {
+            "voice": {"total": total_sequences, "success": voice_success},
+            "sms": {"total": total_sequences, "success": sms_success},
+            "email": {"total": total_sequences, "success": email_success}
+        }
+    }
+
+# ==================== FOLLOW-UP CADENCE ENDPOINTS ====================
+
+async def execute_followup_action(cadence_id: str, day: int):
+    """Execute a follow-up action for a specific day"""
+    cadence = await db.followup_cadences.find_one({"id": cadence_id}, {"_id": 0})
+    if not cadence or cadence["status"] != "active":
+        return
+    
+    lead = await db.leads.find_one({"id": cadence["lead_id"]}, {"_id": 0})
+    if not lead:
+        return
+    
+    logging.info(f"Executing follow-up day {day} for cadence {cadence_id}")
+    
+    action_key = f"day_{day}_action"
+    action = cadence.get(action_key, "voice")
+    result_text = ""
+    
+    if action == "voice":
+        result = await trigger_maya_call(lead, lead.get("language_preference", "English"))
+        result_text = f"Voice call {result['status']}"
+    elif action == "whatsapp":
+        message = f"Hi {lead['name']}, following up on your Dubai property inquiry. Are you still interested? Reply YES or call us. - PropBoost AI [AI]"
+        result = await send_twilio_sms(lead["phone"], message)
+        result_text = f"WhatsApp/SMS {result['status']}"
+    elif action == "email":
+        subject = "Final Follow-up: Your Dubai Property Inquiry"
+        body = f"""
+        <html><body>
+        <h2>Hello {lead['name']},</h2>
+        <p>This is our final follow-up regarding your Dubai property inquiry.</p>
+        <p>If you're no longer interested, no worries! But if you'd like to continue the conversation, simply reply to this email.</p>
+        <p>Best regards,<br>PropBoost AI</p>
+        <p style="font-size:12px;color:#666;">[AI-Generated Content]</p>
+        </body></html>
+        """
+        result = await send_simulated_email(lead["email"], subject, body, lead["name"])
+        result_text = f"Email {result['status']}"
+    
+    # Update cadence
+    update_data = {
+        f"day_{day}_completed": True,
+        f"day_{day}_result": result_text
+    }
+    
+    # Calculate next action
+    next_days = {1: 2, 2: 4, 4: 7}
+    if day in next_days:
+        next_day = next_days[day]
+        next_action = datetime.now(timezone.utc) + timedelta(days=next_day - day)
+        update_data["next_action_at"] = next_action.isoformat()
+        update_data["next_action_day"] = next_day
+    elif day == 7:
+        update_data["status"] = "completed"
+        update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.followup_cadences.update_one({"id": cadence_id}, {"$set": update_data})
+    await log_activity("followup_executed", "cadence", cadence_id, {"day": day, "action": action})
+
+@api_router.post("/followups/cadences")
+async def create_followup_cadence(lead_id: str, trigger_reason: str = "missed_call", background_tasks: BackgroundTasks = None, user: dict = Depends(require_auth)):
+    """Create an automated follow-up cadence for a lead"""
+    # Verify lead exists
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Check for existing active cadence
+    existing = await db.followup_cadences.find_one({"lead_id": lead_id, "status": "active"}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Active cadence already exists for this lead")
+    
+    # Create cadence
+    cadence = FollowUpCadence(
+        lead_id=lead_id,
+        owner_id=user["user_id"],
+        trigger_reason=trigger_reason
+    )
+    
+    # Set next action (Day 2 since Day 1 is the missed call that triggered this)
+    cadence.day_1_completed = True
+    cadence.day_1_result = trigger_reason
+    next_action = datetime.now(timezone.utc) + timedelta(days=1)
+    cadence.next_action_at = next_action.isoformat()
+    cadence.next_action_day = 2
+    
+    await db.followup_cadences.insert_one(cadence.model_dump())
+    
+    await log_activity("followup_cadence_created", "cadence", cadence.id, {
+        "lead_id": lead_id,
+        "trigger": trigger_reason
+    }, user["user_id"])
+    
+    return cadence.model_dump()
+
+@api_router.get("/followups/cadences")
+async def get_followup_cadences(status: Optional[str] = None, user: dict = Depends(require_auth)):
+    """Get all follow-up cadences"""
+    query = {"owner_id": user["user_id"]}
+    if status:
+        query["status"] = status
+    
+    cadences = await db.followup_cadences.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with lead data
+    for cad in cadences:
+        lead = await db.leads.find_one({"id": cad["lead_id"]}, {"_id": 0, "name": 1, "phone": 1, "score": 1})
+        if lead:
+            cad["lead_name"] = lead.get("name", "Unknown")
+            cad["lead_phone"] = lead.get("phone", "")
+            cad["lead_score"] = lead.get("score", 0)
+    
+    return cadences
+
+@api_router.get("/followups/cadences/{cadence_id}")
+async def get_followup_cadence(cadence_id: str, user: dict = Depends(require_auth)):
+    """Get a single follow-up cadence"""
+    cadence = await db.followup_cadences.find_one({"id": cadence_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not cadence:
+        raise HTTPException(status_code=404, detail="Cadence not found")
+    return cadence
+
+@api_router.post("/followups/cadences/{cadence_id}/execute-day")
+async def execute_followup_day(cadence_id: str, day: int, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
+    """Manually execute a follow-up day"""
+    cadence = await db.followup_cadences.find_one({"id": cadence_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not cadence:
+        raise HTTPException(status_code=404, detail="Cadence not found")
+    
+    if day not in [1, 2, 4, 7]:
+        raise HTTPException(status_code=400, detail="Day must be 1, 2, 4, or 7")
+    
+    background_tasks.add_task(execute_followup_action, cadence_id, day)
+    return {"message": f"Executing follow-up day {day}"}
+
+@api_router.put("/followups/cadences/{cadence_id}/mark-responded")
+async def mark_lead_responded(cadence_id: str, user: dict = Depends(require_auth)):
+    """Mark cadence as responded (lead replied)"""
+    result = await db.followup_cadences.update_one(
+        {"id": cadence_id, "owner_id": user["user_id"]},
+        {"$set": {
+            "status": "responded",
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cadence not found")
+    return {"message": "Cadence marked as responded"}
+
+@api_router.put("/followups/cadences/{cadence_id}/cancel")
+async def cancel_followup_cadence(cadence_id: str, user: dict = Depends(require_auth)):
+    """Cancel a follow-up cadence"""
+    result = await db.followup_cadences.update_one(
+        {"id": cadence_id, "owner_id": user["user_id"]},
+        {"$set": {"status": "cancelled", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cadence not found")
+    return {"message": "Cadence cancelled"}
+
+@api_router.get("/followups/stats")
+async def get_followup_stats(user: dict = Depends(require_auth)):
+    """Get follow-up cadence statistics"""
+    user_filter = {"owner_id": user["user_id"]}
+    
+    total_cadences = await db.followup_cadences.count_documents(user_filter)
+    active_cadences = await db.followup_cadences.count_documents({**user_filter, "status": "active"})
+    completed_cadences = await db.followup_cadences.count_documents({**user_filter, "status": "completed"})
+    responded_cadences = await db.followup_cadences.count_documents({**user_filter, "status": "responded"})
+    
+    # Response rate
+    response_rate = round((responded_cadences / total_cadences * 100) if total_cadences > 0 else 0, 1)
+    
+    # Trigger reasons breakdown
+    missed_call_count = await db.followup_cadences.count_documents({**user_filter, "trigger_reason": "missed_call"})
+    no_response_count = await db.followup_cadences.count_documents({**user_filter, "trigger_reason": "no_response"})
+    callback_count = await db.followup_cadences.count_documents({**user_filter, "trigger_reason": "callback_requested"})
+    
+    return {
+        "total_cadences": total_cadences,
+        "active_cadences": active_cadences,
+        "completed_cadences": completed_cadences,
+        "responded_cadences": responded_cadences,
+        "response_rate": response_rate,
+        "trigger_breakdown": {
+            "missed_call": missed_call_count,
+            "no_response": no_response_count,
+            "callback_requested": callback_count
+        }
+    }
+
+# ==================== LEARNING ENGINE ENDPOINTS ====================
+
+@api_router.post("/learning/conversations")
+async def log_conversation(
+    lead_id: str,
+    call_id: str = "",
+    transcript: str = "",
+    summary: str = "",
+    duration_seconds: float = 0,
+    outcome: str = "",
+    user: dict = Depends(require_auth)
+):
+    """Log a Maya conversation for learning analysis"""
+    lead = await db.leads.find_one({"id": lead_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Extract BANT from transcript if available
+    bant_data = {}
+    if transcript or summary:
+        bant_data = await extract_bant_from_call(transcript, summary)
+    
+    log = ConversationLog(
+        lead_id=lead_id,
+        owner_id=user["user_id"],
+        call_id=call_id,
+        transcript=transcript,
+        summary=summary,
+        duration_seconds=duration_seconds,
+        language=lead.get("language_preference", "English"),
+        bant_budget=bant_data.get("budget", ""),
+        bant_authority=bant_data.get("authority", ""),
+        bant_need=bant_data.get("need", ""),
+        bant_timeline=bant_data.get("timeline", ""),
+        outcome=outcome,
+        ai_confidence=calculate_confidence_score(bant_data, outcome, duration_seconds),
+        objections_raised=bant_data.get("objections", "").split(",") if bant_data.get("objections") else []
+    )
+    
+    await db.conversation_logs.insert_one(log.model_dump())
+    await log_activity("conversation_logged", "learning", log.id, {"lead_id": lead_id}, user["user_id"])
+    
+    return log.model_dump()
+
+@api_router.get("/learning/conversations")
+async def get_conversations(limit: int = 50, outcome: Optional[str] = None, user: dict = Depends(require_auth)):
+    """Get conversation logs for learning analysis"""
+    query = {"owner_id": user["user_id"]}
+    if outcome:
+        query["outcome"] = outcome
+    
+    logs = await db.conversation_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    
+    # Enrich with lead data
+    for log in logs:
+        lead = await db.leads.find_one({"id": log["lead_id"]}, {"_id": 0, "name": 1})
+        if lead:
+            log["lead_name"] = lead.get("name", "Unknown")
+    
+    return logs
+
+@api_router.post("/learning/conversations/{conversation_id}/rate")
+async def rate_conversation(conversation_id: str, rating: BrokerRating, user: dict = Depends(require_auth)):
+    """Broker rates a Maya conversation for learning"""
+    log = await db.conversation_logs.find_one({"id": conversation_id, "owner_id": user["user_id"]}, {"_id": 0})
+    if not log:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    if rating.rating < 1 or rating.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+    
+    update_data = {
+        "broker_rating": rating.rating,
+        "broker_feedback": rating.feedback,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if rating.deal_status:
+        update_data["deal_status"] = rating.deal_status
+    if rating.deal_value > 0:
+        update_data["deal_value"] = rating.deal_value
+        if rating.deal_status == "won":
+            update_data["deal_closed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.conversation_logs.update_one({"id": conversation_id}, {"$set": update_data})
+    await log_activity("conversation_rated", "learning", conversation_id, {"rating": rating.rating}, user["user_id"])
+    
+    return {"message": "Conversation rated successfully"}
+
+@api_router.get("/learning/patterns")
+async def get_learning_patterns(user: dict = Depends(require_auth)):
+    """Analyze conversation patterns for Maya's learning"""
+    user_filter = {"owner_id": user["user_id"]}
+    
+    conversations = await db.conversation_logs.find(user_filter, {"_id": 0}).to_list(1000)
+    
+    if not conversations:
+        return {
+            "total_conversations": 0,
+            "patterns": [],
+            "insights": []
+        }
+    
+    # Aggregate patterns
+    total = len(conversations)
+    qualified_count = len([c for c in conversations if c.get("outcome") == "qualified"])
+    avg_confidence = sum(c.get("ai_confidence", 0) for c in conversations) / total if total > 0 else 0
+    avg_duration = sum(c.get("duration_seconds", 0) for c in conversations) / total if total > 0 else 0
+    
+    # Rating analysis
+    rated = [c for c in conversations if c.get("broker_rating", 0) > 0]
+    avg_rating = sum(c.get("broker_rating", 0) for c in rated) / len(rated) if rated else 0
+    
+    # Deal analysis
+    won_deals = [c for c in conversations if c.get("deal_status") == "won"]
+    lost_deals = [c for c in conversations if c.get("deal_status") == "lost"]
+    total_deal_value = sum(c.get("deal_value", 0) for c in won_deals)
+    
+    # Budget patterns
+    budgets = [c.get("bant_budget", "") for c in conversations if c.get("bant_budget")]
+    
+    # Timeline patterns
+    timelines = [c.get("bant_timeline", "") for c in conversations if c.get("bant_timeline")]
+    
+    # Generate insights
+    insights = []
+    if avg_confidence > 70:
+        insights.append({"type": "positive", "message": f"Maya's average confidence is strong at {avg_confidence:.1f}%"})
+    elif avg_confidence < 50:
+        insights.append({"type": "warning", "message": f"Maya's confidence is low ({avg_confidence:.1f}%). More training data needed."})
+    
+    if qualified_count / total > 0.5 if total > 0 else False:
+        insights.append({"type": "positive", "message": f"High qualification rate: {qualified_count/total*100:.1f}%"})
+    
+    if avg_rating >= 4:
+        insights.append({"type": "positive", "message": f"Broker satisfaction is excellent (avg {avg_rating:.1f}/5)"})
+    elif avg_rating > 0 and avg_rating < 3:
+        insights.append({"type": "warning", "message": f"Broker satisfaction needs improvement (avg {avg_rating:.1f}/5)"})
+    
+    if won_deals:
+        insights.append({"type": "success", "message": f"Total revenue from Maya calls: AED {total_deal_value:,.0f}"})
+    
+    return {
+        "total_conversations": total,
+        "qualified_count": qualified_count,
+        "qualification_rate": round(qualified_count / total * 100, 1) if total > 0 else 0,
+        "avg_confidence": round(avg_confidence, 1),
+        "avg_duration_seconds": round(avg_duration, 1),
+        "avg_broker_rating": round(avg_rating, 1),
+        "rated_conversations": len(rated),
+        "deals": {
+            "won": len(won_deals),
+            "lost": len(lost_deals),
+            "total_value": total_deal_value
+        },
+        "patterns": {
+            "common_budgets": budgets[:10],
+            "common_timelines": timelines[:10]
+        },
+        "insights": insights
+    }
+
+@api_router.get("/learning/stats")
+async def get_learning_stats(user: dict = Depends(require_auth)):
+    """Get learning engine statistics for dashboard"""
+    user_filter = {"owner_id": user["user_id"]}
+    
+    total_conversations = await db.conversation_logs.count_documents(user_filter)
+    rated_conversations = await db.conversation_logs.count_documents({**user_filter, "broker_rating": {"$gt": 0}})
+    qualified_conversations = await db.conversation_logs.count_documents({**user_filter, "outcome": "qualified"})
+    
+    # Get average metrics
+    pipeline = [
+        {"$match": user_filter},
+        {"$group": {
+            "_id": None,
+            "avg_confidence": {"$avg": "$ai_confidence"},
+            "avg_duration": {"$avg": "$duration_seconds"},
+            "avg_rating": {"$avg": {"$cond": [{"$gt": ["$broker_rating", 0]}, "$broker_rating", None]}},
+            "total_deal_value": {"$sum": {"$cond": [{"$eq": ["$deal_status", "won"]}, "$deal_value", 0]}}
+        }}
+    ]
+    
+    agg_result = await db.conversation_logs.aggregate(pipeline).to_list(1)
+    metrics = agg_result[0] if agg_result else {}
+    
+    return {
+        "total_conversations": total_conversations,
+        "rated_conversations": rated_conversations,
+        "qualified_conversations": qualified_conversations,
+        "qualification_rate": round(qualified_conversations / total_conversations * 100, 1) if total_conversations > 0 else 0,
+        "avg_confidence": round(metrics.get("avg_confidence", 0) or 0, 1),
+        "avg_duration_seconds": round(metrics.get("avg_duration", 0) or 0, 1),
+        "avg_broker_rating": round(metrics.get("avg_rating", 0) or 0, 1),
+        "total_deal_value": metrics.get("total_deal_value", 0) or 0
+    }
+
 # Include routers
 app.include_router(auth_router)
 app.include_router(api_router)
