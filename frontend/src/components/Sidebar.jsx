@@ -9,7 +9,10 @@ import {
   LogOut,
   Sparkles,
   BarChart3,
-  Mic
+  Mic,
+  Zap,
+  Calendar,
+  Brain
 } from "lucide-react";
 
 const navItems = [
@@ -19,6 +22,9 @@ const navItems = [
   { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
   { path: "/voice-ai", icon: Mic, label: "Voice AI" },
+  { path: "/omnichannel", icon: Zap, label: "Omnichannel" },
+  { path: "/followups", icon: Calendar, label: "Follow-ups" },
+  { path: "/maya-learning", icon: Brain, label: "Maya Learning" },
 ];
 
 export default function Sidebar({ currentPath }) {
