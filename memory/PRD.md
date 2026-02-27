@@ -1,38 +1,10 @@
 # PropBoost AI - Product Requirements Document
 
 ## Overview
-PropBoost AI is a B2B SaaS platform for Dubai real estate agents providing AI-powered lead qualification, multilingual content generation, and pipeline management.
+PropBoost AI is a B2B SaaS platform for Dubai real estate agents providing AI-powered lead qualification, multilingual content generation, pipeline management, and now **omnichannel outreach** capabilities.
 
 ## Original Problem Statement
 Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent brokerages) handling 10-50 transactions/year. Must support Arabic/English/Hindi/Russian/Mandarin/French and comply with RERA/DLD regulations.
-
-## Critical Bug Fixes (Feb 18, 2026)
-
-### Auth Redirect Loop Fix - RESOLVED ✅
-**Bug Description:** Authentication redirect loop prevented new users from accessing the dashboard after signup/login. Users would briefly see the dashboard then immediately redirect back to /login.
-
-**Root Cause:** Race condition where `navigate('/dashboard')` was called immediately after the login/signup API call returned, but React state hadn't propagated yet. When `ProtectedRoute` checked the user state, it was still `null`, causing a redirect back to `/login`.
-
-**Fix Applied:**
-1. **App.js AuthProvider:** Removed `setTimeout` race condition. `login`/`signup` functions now set `localStorage` FIRST before state changes
-2. **Login.jsx:** Added `useEffect` to watch `user` state. Navigation only happens AFTER user is confirmed to be set
-3. **Signup.jsx:** Same pattern - `useEffect` watches user state before navigating
-4. **AuthCallback.jsx:** OAuth callback uses `useEffect` to wait for user state before redirecting
-
-**Files Changed:**
-- `/app/frontend/src/App.js` (lines 197-313)
-- `/app/frontend/src/pages/Login.jsx`
-- `/app/frontend/src/pages/Signup.jsx`
-- `/app/frontend/src/pages/AuthCallback.jsx`
-
-**Test Results:** All 6 scenarios passed (tested Feb 18, 2026):
-- ✅ New email signup → lands on /dashboard
-- ✅ Existing email login → lands on /dashboard
-- ✅ Google OAuth buttons present and functional
-- ✅ Unauthenticated user → redirects to /login
-- ✅ Logged-in user on /login → redirects to /dashboard
-
-**Security Fix:** Also fixed `/api/auth/me` endpoint to exclude `password_hash` from response.
 
 ## User Personas
 1. **Solo Agent** - Individual agent managing 50-100 leads/month
@@ -45,6 +17,9 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - Visual Pipeline Tracker (Kanban with drag-drop)
 - Agent Approval Workflow (RERA compliance)
 - Mobile-responsive design
+- **Omnichannel Outreach** (Voice → WhatsApp → SMS → Email)
+- **Automated Follow-ups** (Day 1 → Day 2 → Day 4 → Day 7)
+- **Maya Learning Engine** (Conversation analysis & pattern detection)
 
 ## What's Been Implemented
 
@@ -68,57 +43,119 @@ Build an AI productivity suite for mid-tier Dubai real estate agents (1-20 agent
 - ✅ Google OAuth via Emergent-managed auth
 - ✅ Protected routes requiring authentication
 - ✅ Lead Leaderboard Analytics module
-- ✅ New lead fields: lead_source, estimated_deal_value
-- ✅ Conversion rate and revenue tracking by source
 - ✅ Voice AI "Maya" integration (Vapi.ai with Twilio carrier)
 - ✅ Auto-trigger Maya calls for hot leads (score > 7)
 - ✅ Voice AI Dashboard (Total Calls, Answered, Qualification Rate, AI Confidence, Avg Talk Time)
-- ✅ Call recording links in lead detail and dashboard
-- ✅ **BANT Summary Display** - Beautiful visualization of Budget, Authority, Need, Timeline
-- ✅ **AI Confidence Score** - Percentage confidence based on call quality and data collected
-- ✅ **High-Velocity Action Feed** - Priority queue for hot leads with one-tap actions
-- ✅ **WhatsApp Handoff** - One-click export of BANT data to WhatsApp
-- ✅ **Budget Flag** - Red flag if budget < 70% of market average
-- ✅ **RERA 2026 Compliance** - compliance_status field (verified/pending/flagged)
-- ✅ Password Reset Flow (Forgot Password + Reset Password pages)
-- ✅ Twilio WhatsApp integration (PLUG-AND-PLAY)
-- ✅ SendGrid Email integration (PLUG-AND-PLAY)
-- ✅ RERA/DLD compliance validation (blocks investment guarantees)
-- ✅ AI-generated content disclaimer enforcement
-- ✅ Compliance audit trail logging
-- ✅ User profile display in sidebar
-- ✅ Logout functionality
+- ✅ BANT Summary Display - Beautiful visualization of Budget, Authority, Need, Timeline
+- ✅ AI Confidence Score - Percentage confidence based on call quality
+- ✅ High-Velocity Action Feed - Priority queue for hot leads
+- ✅ WhatsApp Handoff - One-click export of BANT data
+- ✅ RERA 2026 Compliance - compliance_status field
+- ✅ Password Reset Flow
+
+### Phase 3 - Omnichannel System (Feb 27, 2026) ✨ NEW
+- ✅ **Gap 1: Omnichannel Outreach Sequence**
+  - Voice Call (immediate) → WhatsApp/SMS (2 min) → SMS (10 min) → Email (1 hour)
+  - OutreachSequence model with step tracking
+  - API endpoints: /api/outreach/sequences, /api/outreach/stats
+  - Frontend page: /omnichannel with sequence management UI
+  - Twilio SMS integration (real or simulated)
+  - Email integration (simulated)
+
+- ✅ **Gap 2: Automated Follow-up Cadences**
+  - Day 1 (Trigger) → Day 2 (WhatsApp) → Day 4 (Voice) → Day 7 (Email)
+  - FollowUpCadence model with day completion tracking
+  - API endpoints: /api/followups/cadences, /api/followups/stats
+  - Frontend page: /followups with cadence timeline visualization
+  - Native backend scheduled jobs (no external dependencies)
+
+- ✅ **Gap 3: Maya Learning Engine**
+  - ConversationLog model with BANT extraction and outcomes
+  - Broker rating system (1-5 stars with feedback)
+  - Deal status tracking (pending/won/lost) with value
+  - Pattern analytics (qualification rate, confidence, success patterns)
+  - API endpoints: /api/learning/conversations, /api/learning/patterns, /api/learning/stats
+  - Frontend page: /maya-learning with analytics dashboard and rating modal
 
 ### Integrations Status
 - ✅ Claude Sonnet 4.5 (via Emergent LLM key) - ACTIVE
 - ✅ Google OAuth (via Emergent Auth) - ACTIVE
-- ✅ Vapi AI Voice API - CONFIGURED & WORKING (Maya assistant for lead qualification)
+- ✅ Vapi AI Voice API - CONFIGURED & WORKING (Maya assistant)
+- ✅ Twilio SMS - CONFIGURED (real or simulated)
 - ✅ Twilio (as carrier for Vapi) - CONFIGURED
 - ⏸️ Twilio WhatsApp API - PLUG-AND-PLAY (need WhatsApp Business number)
-- ⏸️ SendGrid Email API - PLUG-AND-PLAY (add credentials when ready)
-
-## Prioritized Backlog
-
-### Future Roadmap (Backlog)
-- WhatsApp Business Integration (Pending API approval from Meta)
-- SendGrid Email Automation (For password reset emails)
-- Property Portal API Sync (Property Finder, Bayut APIs)
-- Social media auto-publishing (Meta Business API)
-- Team collaboration features
-- Advanced reporting dashboard
-- Multi-tenant architecture
-- Real-time notifications
-- Mobile app (React Native)
+- ⏸️ SendGrid Email API - PLUG-AND-PLAY (using simulated email)
 
 ## Technical Architecture
-- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts
+- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts, Lucide Icons
 - **Backend**: FastAPI, Motor (async MongoDB), Pydantic, JWT
 - **AI**: Claude Sonnet 4.5 via emergentintegrations
 - **Auth**: JWT + Emergent Google OAuth
 - **Database**: MongoDB
 - **Voice AI**: Vapi.ai + Twilio carrier (LIVE)
-- **Messaging**: Twilio WhatsApp, SendGrid Email (plug-and-play)
+- **Messaging**: Twilio SMS (real/simulated), Simulated Email
 - **Fonts**: Playfair Display (headings), Outfit (body), Tajawal (Arabic)
+
+## API Endpoints (New in Phase 3)
+
+### Omnichannel Outreach
+- `POST /api/outreach/sequences` - Create new sequence
+- `GET /api/outreach/sequences` - List all sequences
+- `GET /api/outreach/sequences/{id}` - Get sequence details
+- `POST /api/outreach/sequences/{id}/execute-step` - Execute next step
+- `PUT /api/outreach/sequences/{id}/pause` - Pause sequence
+- `PUT /api/outreach/sequences/{id}/resume` - Resume sequence
+- `PUT /api/outreach/sequences/{id}/cancel` - Cancel sequence
+- `GET /api/outreach/stats` - Get outreach statistics
+
+### Follow-up Cadences
+- `POST /api/followups/cadences` - Create new cadence
+- `GET /api/followups/cadences` - List all cadences
+- `GET /api/followups/cadences/{id}` - Get cadence details
+- `POST /api/followups/cadences/{id}/execute-day` - Execute specific day
+- `PUT /api/followups/cadences/{id}/mark-responded` - Mark lead responded
+- `PUT /api/followups/cadences/{id}/cancel` - Cancel cadence
+- `GET /api/followups/stats` - Get follow-up statistics
+
+### Maya Learning Engine
+- `POST /api/learning/conversations` - Log a conversation
+- `GET /api/learning/conversations` - Get conversation logs
+- `POST /api/learning/conversations/{id}/rate` - Rate conversation
+- `GET /api/learning/patterns` - Get learning patterns
+- `GET /api/learning/stats` - Get learning statistics
+
+## Navigation Structure
+1. Dashboard
+2. Lead Inbox
+3. Content Studio
+4. Pipeline
+5. Analytics
+6. Voice AI
+7. **Omnichannel** (NEW)
+8. **Follow-ups** (NEW)
+9. **Maya Learning** (NEW)
+
+## Prioritized Backlog
+
+### P0 - Critical (Immediate)
+- Infrastructure: Backend API routing needs to be working via public URL
+
+### P1 - High Priority (Next Sprint)
+- Real WhatsApp Business API integration
+- Real SendGrid Email integration
+- Background job scheduler (APScheduler) for automated sequence execution
+
+### P2 - Medium Priority (Future)
+- Property Portal API Sync (Property Finder, Bayut)
+- Social media auto-publishing
+- Team collaboration features
+- Advanced predictive analytics
+
+### P3 - Backlog
+- Mobile app (React Native)
+- Multi-tenant architecture improvements
+- Real-time WebSocket notifications
+- 10-Language Expansion (Russian, Mandarin)
 
 ## Environment Variables (Backend)
 ```
@@ -128,7 +165,7 @@ MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, JWT_SECRET
 # Vapi Voice AI (configured)
 VAPI_API_KEY, VAPI_ASSISTANT_ID, VAPI_PHONE_NUMBER_ID
 
-# Twilio - Carrier for Vapi (configured)
+# Twilio SMS (configured - real or simulated)
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
 
 # Plug-and-Play (add when ready)
@@ -141,9 +178,5 @@ SENDGRID_API_KEY, SENDGRID_FROM_EMAIL
 - Team: AED 2,499/month (5 agents, 500 leads/month)
 - Enterprise: AED 4,999/month (20 agents, unlimited)
 
-## Next Tasks
-1. Add property portal API integrations (Property Finder, Bayut)
-2. Implement automated follow-up sequences
-3. Add real-time notifications (WebSocket)
-4. Build team collaboration features
-5. Add advanced predictive analytics
+---
+*Last Updated: February 27, 2026*
