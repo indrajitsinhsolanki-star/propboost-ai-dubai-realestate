@@ -586,8 +586,9 @@ class PropBoostAPITester:
         return self.run_test("User Logout", "POST", "auth/logout", 200, auth_required=True)
 
 def main():
-    print("🚀 Starting PropBoost AI Phase 2 API Testing...")
-    print("=" * 60)
+    print("🚀 Starting PropBoost AI New Features API Testing...")
+    print("Testing: Omnichannel Outreach, Follow-up Cadences, Maya Learning Engine")
+    print("=" * 70)
     
     tester = PropBoostAPITester()
     
