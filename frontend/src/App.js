@@ -97,6 +97,29 @@ const createApi = (token) => {
     // Activity Logs
     getActivityLogs: (limit) => axios.get(`${API}/activity-logs?limit=${limit || 50}`, { headers }),
     getComplianceAudits: (limit) => axios.get(`${API}/compliance-audits?limit=${limit || 50}`, { headers }),
+    
+    // Omnichannel Outreach
+    getOutreachSequences: (status) => axios.get(`${API}/outreach/sequences${status ? `?status=${status}` : ''}`, { headers }),
+    getOutreachStats: () => axios.get(`${API}/outreach/stats`, { headers }),
+    createOutreachSequence: (data) => axios.post(`${API}/outreach/sequences`, data, { headers }),
+    executeOutreachStep: (sequenceId, step) => axios.post(`${API}/outreach/sequences/${sequenceId}/execute-step?step=${step}`, {}, { headers }),
+    pauseOutreachSequence: (sequenceId) => axios.put(`${API}/outreach/sequences/${sequenceId}/pause`, {}, { headers }),
+    resumeOutreachSequence: (sequenceId) => axios.put(`${API}/outreach/sequences/${sequenceId}/resume`, {}, { headers }),
+    cancelOutreachSequence: (sequenceId) => axios.put(`${API}/outreach/sequences/${sequenceId}/cancel`, {}, { headers }),
+    
+    // Follow-up Cadences
+    getFollowupCadences: (status) => axios.get(`${API}/followups/cadences${status ? `?status=${status}` : ''}`, { headers }),
+    getFollowupStats: () => axios.get(`${API}/followups/stats`, { headers }),
+    createFollowupCadence: (leadId, triggerReason) => axios.post(`${API}/followups/cadences?lead_id=${leadId}&trigger_reason=${triggerReason}`, {}, { headers }),
+    executeFollowupDay: (cadenceId, day) => axios.post(`${API}/followups/cadences/${cadenceId}/execute-day?day=${day}`, {}, { headers }),
+    markFollowupResponded: (cadenceId) => axios.put(`${API}/followups/cadences/${cadenceId}/mark-responded`, {}, { headers }),
+    cancelFollowupCadence: (cadenceId) => axios.put(`${API}/followups/cadences/${cadenceId}/cancel`, {}, { headers }),
+    
+    // Maya Learning Engine
+    getLearningStats: () => axios.get(`${API}/learning/stats`, { headers }),
+    getLearningPatterns: () => axios.get(`${API}/learning/patterns`, { headers }),
+    getLearningConversations: (limit) => axios.get(`${API}/learning/conversations?limit=${limit || 50}`, { headers }),
+    rateConversation: (conversationId, data) => axios.post(`${API}/learning/conversations/${conversationId}/rate`, data, { headers }),
   };
 };
 
