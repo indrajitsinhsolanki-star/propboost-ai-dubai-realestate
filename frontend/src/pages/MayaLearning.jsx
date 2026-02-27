@@ -9,18 +9,14 @@ import {
   TrendingUp,
   Star,
   DollarSign,
-  Clock,
   MessageSquare,
   RefreshCw,
   Loader2,
   CheckCircle,
   AlertTriangle,
   Lightbulb,
-  BarChart3,
-  ThumbsUp,
-  ThumbsDown
+  BarChart3
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 export default function MayaLearning() {
   const { api } = useAuth();
@@ -86,8 +82,6 @@ export default function MayaLearning() {
     }
   };
 
-  const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
-
   if (loading) {
     return (
       <div className="p-4 md:p-8">
@@ -100,11 +94,6 @@ export default function MayaLearning() {
       </div>
     );
   }
-
-  const outcomeData = patterns ? [
-    { name: 'Qualified', value: patterns.qualified_count || 0, fill: '#10B981' },
-    { name: 'Not Qualified', value: (patterns.total_conversations || 0) - (patterns.qualified_count || 0), fill: '#EF4444' }
-  ].filter(d => d.value > 0) : [];
 
   return (
     <div className="p-4 md:p-8 space-y-6" data-testid="maya-learning-page">
@@ -245,48 +234,33 @@ export default function MayaLearning() {
         </Card>
       )}
 
-      {/* Charts Row */}
+      {/* Deal Performance */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Qualification Outcomes */}
         <Card className="bg-white border border-gray-100 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
               <TrendingUp className="w-5 h-5 text-green-500" />
-              Qualification Outcomes
+              Qualification Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {outcomeData.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={outcomeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {outcomeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-gray-600">Qualified Leads</span>
+                <span className="text-2xl font-bold text-green-600">{patterns?.qualified_count || 0}</span>
               </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                No data yet - Maya needs more conversations
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span className="text-gray-600">Total Conversations</span>
+                <span className="text-2xl font-bold text-blue-600">{patterns?.total_conversations || 0}</span>
               </div>
-            )}
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <span className="text-gray-600">Qualification Rate</span>
+                <span className="text-2xl font-bold text-purple-600">{patterns?.qualification_rate || 0}%</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Deal Performance */}
         <Card className="bg-white border border-gray-100 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -296,7 +270,7 @@ export default function MayaLearning() {
           </CardHeader>
           <CardContent>
             {patterns?.deals ? (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="p-4 bg-green-50 rounded-lg">
                     <p className="text-3xl font-bold text-green-600">{patterns.deals.won}</p>
@@ -307,7 +281,7 @@ export default function MayaLearning() {
                     <p className="text-sm text-gray-500">Deals Lost</p>
                   </div>
                   <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{patterns.deals.total_value?.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-blue-600">{(patterns.deals.total_value || 0).toLocaleString()}</p>
                     <p className="text-sm text-gray-500">Total AED</p>
                   </div>
                 </div>
@@ -318,7 +292,7 @@ export default function MayaLearning() {
                 </div>
               </div>
             ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="py-8 text-center text-gray-500">
                 No deal data yet
               </div>
             )}
@@ -356,15 +330,15 @@ export default function MayaLearning() {
                         <p className="font-medium text-sm">{conv.lead_name || 'Unknown'}</p>
                       </td>
                       <td className="py-3 px-2 text-sm">
-                        {Math.floor(conv.duration_seconds / 60)}:{String(Math.floor(conv.duration_seconds % 60)).padStart(2, '0')}
+                        {Math.floor((conv.duration_seconds || 0) / 60)}:{String(Math.floor((conv.duration_seconds || 0) % 60)).padStart(2, '0')}
                       </td>
                       <td className="py-3 px-2">
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                          conv.ai_confidence >= 70 ? 'bg-green-100 text-green-700' :
-                          conv.ai_confidence >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                          (conv.ai_confidence || 0) >= 70 ? 'bg-green-100 text-green-700' :
+                          (conv.ai_confidence || 0) >= 40 ? 'bg-yellow-100 text-yellow-700' :
                           'bg-red-100 text-red-700'
                         }`}>
-                          {conv.ai_confidence}%
+                          {conv.ai_confidence || 0}%
                         </div>
                       </td>
                       <td className="py-3 px-2">
@@ -377,7 +351,7 @@ export default function MayaLearning() {
                         </Badge>
                       </td>
                       <td className="py-3 px-2">
-                        {conv.broker_rating > 0 ? (
+                        {(conv.broker_rating || 0) > 0 ? (
                           <div className="flex items-center gap-1">
                             {[1,2,3,4,5].map(star => (
                               <Star 
@@ -400,7 +374,7 @@ export default function MayaLearning() {
                         </Badge>
                       </td>
                       <td className="py-3 px-2">
-                        {conv.broker_rating === 0 && (
+                        {(conv.broker_rating || 0) === 0 && (
                           <Button
                             size="sm"
                             variant="outline"
