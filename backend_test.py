@@ -676,11 +676,11 @@ def main():
             print(f"❌ Test failed with exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All Phase 2 API tests passed!")
+        print("🎉 All New Features API tests passed!")
         return 0
     else:
         print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
