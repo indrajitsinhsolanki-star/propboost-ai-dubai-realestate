@@ -250,6 +250,139 @@ class ComplianceAudit(BaseModel):
     reviewed_by: str = ""
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+# ==================== OMNICHANNEL OUTREACH MODELS ====================
+
+class OutreachSequence(BaseModel):
+    """Omnichannel outreach sequence: Voice → WhatsApp → SMS → Email"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    lead_id: str
+    owner_id: str = ""
+    status: str = "active"  # active, paused, completed, cancelled
+    current_step: str = "voice"  # voice, whatsapp, sms, email, completed
+    
+    # Step timings (in minutes from sequence start)
+    voice_at: int = 0
+    whatsapp_at: int = 2
+    sms_at: int = 10
+    email_at: int = 60
+    
+    # Step results
+    voice_status: str = ""  # initiated, completed, no_answer, failed
+    voice_call_id: str = ""
+    whatsapp_status: str = ""  # sent, delivered, failed
+    whatsapp_sid: str = ""
+    sms_status: str = ""  # sent, delivered, failed
+    sms_sid: str = ""
+    email_status: str = ""  # sent, delivered, failed
+    email_id: str = ""
+    
+    # Timestamps
+    started_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    next_action_at: str = ""
+    completed_at: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class OutreachSequenceCreate(BaseModel):
+    lead_id: str
+    voice_at: int = 0
+    whatsapp_at: int = 2
+    sms_at: int = 10
+    email_at: int = 60
+
+# ==================== FOLLOW-UP CADENCE MODELS ====================
+
+class FollowUpCadence(BaseModel):
+    """Automated follow-up cadence: Day 1 → Day 2 → Day 4 → Day 7"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    lead_id: str
+    owner_id: str = ""
+    status: str = "active"  # active, paused, completed, cancelled, responded
+    trigger_reason: str = ""  # missed_call, no_response, callback_requested
+    
+    # Cadence schedule (days from start)
+    day_1_action: str = "voice"  # Initial missed call
+    day_2_action: str = "whatsapp"
+    day_4_action: str = "voice"
+    day_7_action: str = "email"  # Final outreach
+    
+    # Step completion status
+    day_1_completed: bool = False
+    day_1_result: str = ""
+    day_2_completed: bool = False
+    day_2_result: str = ""
+    day_4_completed: bool = False
+    day_4_result: str = ""
+    day_7_completed: bool = False
+    day_7_result: str = ""
+    
+    # Timestamps
+    started_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    next_action_at: str = ""
+    next_action_day: int = 1
+    completed_at: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# ==================== LEARNING ENGINE MODELS ====================
+
+class ConversationLog(BaseModel):
+    """Learning engine: Track Maya conversations with outcomes"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    lead_id: str
+    owner_id: str = ""
+    call_id: str = ""
+    
+    # Conversation data
+    transcript: str = ""
+    summary: str = ""
+    duration_seconds: float = 0
+    language: str = "English"
+    
+    # BANT extraction
+    bant_budget: str = ""
+    bant_authority: str = ""
+    bant_need: str = ""
+    bant_timeline: str = ""
+    
+    # Outcomes
+    outcome: str = ""  # qualified, not_qualified, callback, no_answer, voicemail
+    deal_status: str = ""  # pending, won, lost
+    deal_closed_at: str = ""
+    deal_value: float = 0
+    
+    # Broker rating (1-5 stars)
+    broker_rating: int = 0
+    broker_feedback: str = ""
+    
+    # AI learning data
+    ai_confidence: int = 0
+    objections_raised: List[str] = []
+    successful_responses: List[str] = []
+    improvement_suggestions: List[str] = []
+    
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class BrokerRating(BaseModel):
+    conversation_id: str
+    rating: int  # 1-5 stars
+    feedback: str = ""
+    deal_status: str = ""  # pending, won, lost
+    deal_value: float = 0
+
+class LearningPattern(BaseModel):
+    """Detected patterns from Maya's conversations"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    pattern_type: str  # objection, success_phrase, budget_range, timeline_indicator
+    pattern_text: str
+    frequency: int = 1
+    success_rate: float = 0
+    contexts: List[str] = []
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 # ==================== AUTHENTICATION HELPERS ====================
 
 def hash_password(password: str) -> str:
