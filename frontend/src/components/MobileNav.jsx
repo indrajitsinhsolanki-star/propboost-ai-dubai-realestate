@@ -5,15 +5,17 @@ import {
   FileText, 
   GitBranch,
   BarChart3,
-  Mic
+  Mic,
+  Zap,
+  Brain
 } from "lucide-react";
 
 const navItems = [
   { path: "/", icon: LayoutDashboard, label: "Home" },
   { path: "/leads", icon: Users, label: "Leads" },
-  { path: "/content", icon: FileText, label: "Content" },
-  { path: "/pipeline", icon: GitBranch, label: "Pipeline" },
+  { path: "/omnichannel", icon: Zap, label: "Outreach" },
   { path: "/voice-ai", icon: Mic, label: "Maya" },
+  { path: "/maya-learning", icon: Brain, label: "Learn" },
 ];
 
 export default function MobileNav({ currentPath }) {
