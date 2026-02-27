@@ -591,7 +591,7 @@ def main():
     
     tester = PropBoostAPITester()
     
-    # Test sequence - Phase 2 comprehensive testing
+    # Test sequence - Phase 2 comprehensive testing with NEW FEATURES
     test_methods = [
         # Basic API
         tester.test_root_endpoint,
@@ -616,6 +616,27 @@ def main():
         
         # Voice AI (Phase 2)
         tester.test_trigger_voice_call,
+        
+        # NEW FEATURE: Omnichannel Outreach
+        tester.test_get_outreach_stats,
+        tester.test_get_outreach_sequences,
+        tester.test_create_outreach_sequence,
+        tester.test_execute_outreach_step,
+        tester.test_pause_outreach_sequence,
+        tester.test_resume_outreach_sequence,
+        
+        # NEW FEATURE: Follow-up Cadences
+        tester.test_get_followup_stats,
+        tester.test_get_followup_cadences,
+        tester.test_create_followup_cadence,
+        tester.test_execute_followup_day,
+        tester.test_mark_followup_responded,
+        
+        # NEW FEATURE: Maya Learning Engine
+        tester.test_get_learning_stats,
+        tester.test_get_learning_patterns,
+        tester.test_get_learning_conversations,
+        tester.test_rate_conversation,
         
         # Properties & Content
         tester.test_create_property,
@@ -645,7 +666,7 @@ def main():
         tester.test_logout
     ]
     
-    print(f"\n📋 Running {len(test_methods)} Phase 2 API tests...")
+    print(f"\n📋 Running {len(test_methods)} Phase 2 API tests (including NEW FEATURES)...")
     
     for test_method in test_methods:
         try:
