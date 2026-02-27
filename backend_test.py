@@ -428,6 +428,159 @@ class PropBoostAPITester:
         """Test compliance audit logs"""
         return self.run_test("Compliance Audits", "GET", "compliance-audits", 200, auth_required=True)
 
+    # ==================== OMNICHANNEL OUTREACH TESTS (NEW FEATURE) ====================
+    
+    def test_get_outreach_stats(self):
+        """Test omnichannel outreach statistics"""
+        return self.run_test("Get Outreach Stats", "GET", "outreach/stats", 200, auth_required=True)
+    
+    def test_get_outreach_sequences(self):
+        """Test getting outreach sequences"""
+        return self.run_test("Get Outreach Sequences", "GET", "outreach/sequences", 200, auth_required=True)
+    
+    def test_create_outreach_sequence(self):
+        """Test creating outreach sequence"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        sequence_data = {
+            "lead_id": self.test_data['lead_id'],
+            "voice_at": 0,
+            "whatsapp_at": 2,
+            "sms_at": 10,
+            "email_at": 60
+        }
+        
+        success, response = self.run_test("Create Outreach Sequence", "POST", "outreach/sequences", 200, sequence_data, auth_required=True)
+        if success and 'id' in response:
+            self.test_data['outreach_sequence_id'] = response['id']
+            print(f"   Sequence ID: {response['id']}")
+            print(f"   Status: {response.get('status', 'N/A')}")
+            print(f"   Current Step: {response.get('current_step', 'N/A')}")
+        return success, response
+    
+    def test_execute_outreach_step(self):
+        """Test executing outreach sequence step"""
+        if 'outreach_sequence_id' not in self.test_data:
+            print("❌ Skipped - No outreach sequence ID available")
+            return False, {}
+        
+        endpoint = f"outreach/sequences/{self.test_data['outreach_sequence_id']}/execute-step?step=voice"
+        return self.run_test("Execute Outreach Step", "POST", endpoint, 200, auth_required=True)
+    
+    def test_pause_outreach_sequence(self):
+        """Test pausing outreach sequence"""
+        if 'outreach_sequence_id' not in self.test_data:
+            print("❌ Skipped - No outreach sequence ID available")
+            return False, {}
+        
+        endpoint = f"outreach/sequences/{self.test_data['outreach_sequence_id']}/pause"
+        return self.run_test("Pause Outreach Sequence", "PUT", endpoint, 200, auth_required=True)
+    
+    def test_resume_outreach_sequence(self):
+        """Test resuming outreach sequence"""
+        if 'outreach_sequence_id' not in self.test_data:
+            print("❌ Skipped - No outreach sequence ID available")
+            return False, {}
+        
+        endpoint = f"outreach/sequences/{self.test_data['outreach_sequence_id']}/resume"
+        return self.run_test("Resume Outreach Sequence", "PUT", endpoint, 200, auth_required=True)
+
+    # ==================== FOLLOW-UP CADENCES TESTS (NEW FEATURE) ====================
+    
+    def test_get_followup_stats(self):
+        """Test follow-up cadence statistics"""
+        return self.run_test("Get Follow-up Stats", "GET", "followups/stats", 200, auth_required=True)
+    
+    def test_get_followup_cadences(self):
+        """Test getting follow-up cadences"""
+        return self.run_test("Get Follow-up Cadences", "GET", "followups/cadences", 200, auth_required=True)
+    
+    def test_create_followup_cadence(self):
+        """Test creating follow-up cadence"""
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        endpoint = f"followups/cadences?lead_id={self.test_data['lead_id']}&trigger_reason=missed_call"
+        success, response = self.run_test("Create Follow-up Cadence", "POST", endpoint, 200, auth_required=True)
+        
+        if success and 'id' in response:
+            self.test_data['followup_cadence_id'] = response['id']
+            print(f"   Cadence ID: {response['id']}")
+            print(f"   Status: {response.get('status', 'N/A')}")
+            print(f"   Trigger Reason: {response.get('trigger_reason', 'N/A')}")
+        return success, response
+    
+    def test_execute_followup_day(self):
+        """Test executing follow-up cadence day"""
+        if 'followup_cadence_id' not in self.test_data:
+            print("❌ Skipped - No follow-up cadence ID available")
+            return False, {}
+        
+        endpoint = f"followups/cadences/{self.test_data['followup_cadence_id']}/execute-day?day=1"
+        return self.run_test("Execute Follow-up Day", "POST", endpoint, 200, auth_required=True)
+    
+    def test_mark_followup_responded(self):
+        """Test marking follow-up as responded"""
+        if 'followup_cadence_id' not in self.test_data:
+            print("❌ Skipped - No follow-up cadence ID available")
+            return False, {}
+        
+        endpoint = f"followups/cadences/{self.test_data['followup_cadence_id']}/mark-responded"
+        return self.run_test("Mark Follow-up Responded", "PUT", endpoint, 200, auth_required=True)
+
+    # ==================== MAYA LEARNING ENGINE TESTS (NEW FEATURE) ====================
+    
+    def test_get_learning_stats(self):
+        """Test Maya learning engine statistics"""
+        success, response = self.run_test("Get Learning Stats", "GET", "learning/stats", 200, auth_required=True)
+        if success:
+            print(f"   Total Conversations: {response.get('total_conversations', 0)}")
+            print(f"   Qualification Rate: {response.get('qualification_rate', 0)}%")
+            print(f"   Average Confidence: {response.get('avg_confidence', 0)}%")
+            print(f"   Average Broker Rating: {response.get('avg_broker_rating', 0)}/5")
+        return success, response
+    
+    def test_get_learning_patterns(self):
+        """Test getting learning patterns"""
+        return self.run_test("Get Learning Patterns", "GET", "learning/patterns", 200, auth_required=True)
+    
+    def test_get_learning_conversations(self):
+        """Test getting learning conversations"""
+        return self.run_test("Get Learning Conversations", "GET", "learning/conversations?limit=10", 200, auth_required=True)
+    
+    def test_rate_conversation(self):
+        """Test rating a conversation"""
+        # Create a mock conversation log first by triggering a voice call
+        if 'lead_id' not in self.test_data:
+            print("❌ Skipped - No lead ID available")
+            return False, {}
+        
+        # First trigger a voice call to create a conversation
+        voice_data = {"lead_id": self.test_data['lead_id'], "language": "English"}
+        voice_success, voice_response = self.run_test("Pre-test: Trigger Voice Call", "POST", "voice/trigger-call", 200, voice_data, auth_required=True)
+        
+        if not voice_success:
+            print("❌ Skipped - Could not create conversation for rating")
+            return False, {}
+        
+        # For testing purposes, we'll create a mock conversation ID
+        # In real scenario, this would come from the conversation logs
+        mock_conversation_id = "test_conversation_123"
+        
+        rating_data = {
+            "conversation_id": mock_conversation_id,
+            "rating": 4,
+            "feedback": "Maya handled the call well, good qualification questions",
+            "deal_status": "pending",
+            "deal_value": 0
+        }
+        
+        endpoint = f"learning/conversations/{mock_conversation_id}/rate"
+        return self.run_test("Rate Conversation", "POST", endpoint, 200, rating_data, auth_required=True)
+
     def test_logout(self):
         """Test user logout"""
         return self.run_test("User Logout", "POST", "auth/logout", 200, auth_required=True)
